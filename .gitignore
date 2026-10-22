@@ -1,0 +1,9 @@
+# Modelos e dados não vão para o repositório
+models/*.pt
+models/*.onnx
+*.jpg
+*.jpeg
+*.png
+__pycache__/
+.venv/
+.env

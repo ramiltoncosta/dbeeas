@@ -1,0 +1,12 @@
+services:
+  api:
+    build: ./api
+    ports:
+      - "8000:8000"
+    volumes:
+      # ":Z" é necessário no Fedora por causa do SELinux
+      - ./models:/models:ro,Z
+    environment:
+      MODEL_PATH: /models/best.pt
+      MIN_CONFIDENCE: "0.50"
+    restart: unless-stopped
