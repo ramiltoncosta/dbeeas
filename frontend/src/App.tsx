@@ -6,6 +6,8 @@ import DetalheColeta from './pages/coletas/Detalhe'
 import ListaColetas from './pages/coletas/Lista'
 import { Cadastrar, Entrar, EsqueciSenha, RedefinirSenha } from './pages/Conta'
 import Identificar from './pages/Identificar'
+import Mapa from './pages/Mapa'
+import AdminEspecies from './pages/admin/Especies'
 import MinhaConta from './pages/MinhaConta'
 import Painel from './pages/Painel'
 import { Inicio, NaoEncontrada, Privacidade, Termos } from './pages/Publicas'
@@ -35,9 +37,11 @@ export default function App() {
         <Route path="/coletas/:id" element={<DetalheColeta />} />
         <Route path="/coletas/:id/editar" element={<FormularioColeta />} />
         <Route path="/identificar" element={<Identificar />} />
+        <Route path="/mapa" element={<Mapa />} />
         <Route path="/conta" element={<MinhaConta />} />
         <Route element={<SomenteAdmin />}>
           <Route path="/admin/usuarios" element={<AdminUsuarios />} />
+          <Route path="/admin/especies" element={<AdminEspecies />} />
         </Route>
       </Route>
 

@@ -76,6 +76,12 @@ export function Privacidade() {
         para melhorar o modelo de identificação se você autorizar, e você pode mudar essa escolha a qualquer
         momento em “Minha conta”.
       </p>
+      <h2>Mapa de ocorrências</h2>
+      <p>
+        Por padrão, as ocorrências das suas coletas (espécie, data e ponto) aparecem no mapa geral da plataforma,
+        para apoiar a pesquisa e o monitoramento ambiental. Outras pessoas não veem suas fotos, o nome da coleta
+        nem quem coletou. Você pode tirar qualquer coleta do mapa geral ao editá-la.
+      </p>
       <h2>Localização de espécies sensíveis</h2>
       <p>
         Para proteger espécies ameaçadas, a localização exata dessas espécies só é mostrada ao dono da foto,

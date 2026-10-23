@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Alerta, Cartao } from '../components/ui'
+import { Alerta } from '../components/ui'
 import { useAuth } from '../lib/auth'
 
 export default function Painel() {
@@ -30,11 +30,10 @@ export default function Painel() {
           <h2 className="text-lg font-bold text-tinta-800">Identificação rápida</h2>
           <p className="mt-1 text-sm text-tinta-500">Envie uma foto da asa e veja a espécie na hora.</p>
         </Link>
-        <Cartao className="border-dashed">
-          <p className="text-xs font-semibold uppercase tracking-wide text-mel-700">Em breve</p>
-          <h2 className="mt-1 text-lg font-bold text-tinta-800">Mapa</h2>
+        <Link to="/mapa" className="rounded-2xl border border-tinta-100 bg-white p-6 shadow-sm transition hover:border-mel-400">
+          <h2 className="text-lg font-bold text-tinta-800">Mapa</h2>
           <p className="mt-1 text-sm text-tinta-500">Veja onde cada espécie foi encontrada.</p>
-        </Cartao>
+        </Link>
       </div>
 
       <p className="text-sm text-tinta-500">
