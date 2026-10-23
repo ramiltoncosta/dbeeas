@@ -14,6 +14,7 @@ dbeeas/
 │   └── tests/              #   testes automatizados
 ├── frontend/               # site (React)
 ├── models/                 # coloque aqui o best.pt (não vai para o Git)
+├── scripts/                # backup e restauração (servidor)
 ├── docs/                   # documentação e prompt do projeto
 ├── docker-compose.yml      # desenvolvimento
 └── docker-compose.prod.yml # produção
@@ -107,8 +108,33 @@ Ver o que está acontecendo:
 docker compose -f docker-compose.prod.yml logs -f backend worker
 ```
 
-**Backup:** o banco (volume `dbdata`) e as fotos (volume `arquivos`) são os dados do
-projeto. O script de backup entra numa próxima etapa; até lá, não apague esses volumes.
+### Backup
+
+O banco (volume `dbdata`) e as fotos (volume `arquivos`) são os dados do projeto.
+
+```bash
+./scripts/backup.sh          # cria backups/AAAA-MM-DD_HHMM/ (banco.dump e arquivos.tar.gz)
+```
+
+Os backups com mais de 14 dias são apagados sozinhos (`BACKUP_DIAS=30 ./scripts/backup.sh` muda o prazo).
+Para rodar todo dia às 3h30, abra o agendador com `crontab -e` e acrescente:
+
+```
+30 3 * * * cd /home/ramilton/dbeeas && ./scripts/backup.sh >> backups/backup.log 2>&1
+```
+
+**Guarde uma cópia fora do servidor.** Se o servidor tiver problema, um backup que só existe nele
+se perde junto. O jeito mais simples é baixar a pasta de vez em quando para o seu computador:
+
+```bash
+scp -r ramilton@2.25.96.33:dbeeas/backups/2026-10-23_0330 ~/Backups-DBeeAS/
+```
+
+Para restaurar (substitui os dados atuais e pede confirmação):
+
+```bash
+./scripts/restaurar.sh backups/2026-10-23_0330
+```
 
 ### DNS (Registro.br)
 
@@ -117,6 +143,21 @@ projeto. O script de backup entra numa próxima etapa; até lá, não apague ess
 | A | (vazio) | IP do servidor |
 | A | www | IP do servidor |
 | A | api | IP do servidor |
+
+## Planos e assinaturas
+
+- Toda conta nova ganha um **teste gratuito** (30 dias, `DIAS_TESTE`) no plano do perfil:
+  estudante → Estudante, pesquisador → Pesquisador, órgão público → Institucional.
+- O limite conta as fotos enviadas às coletas e as da identificação rápida no mês (fuso de Brasília).
+  O saldo renova no dia 1º. Apagar fotos não devolve o saldo. Administradores não têm limite.
+- Sem plano válido (teste vencido, suspenso, cancelado) ou sem saldo, o envio é bloqueado com uma
+  mensagem que explica o motivo. As coletas, o mapa e a exportação dos dados continuam funcionando.
+- **Preços e limites:** Administração › Planos. Plano sem preço aparece como "sob consulta".
+- **Ativar o plano de alguém** (depois do pagamento): Administração › Usuários › "Gerenciar plano".
+  O filtro "Pedidos de plano" mostra quem pediu um plano pelo site. Cada mudança fica no histórico.
+- **Cobrança automática:** ainda não existe. O código tem uma interface de pagamento
+  (`backend/app/pagamentos.py`) pronta para receber o Asaas, o Mercado Pago ou o Pagar.me; hoje o modo é
+  `GATEWAY_PAGAMENTO=manual`.
 
 ## Configurações do backend
 
@@ -130,6 +171,8 @@ Definidas por variáveis de ambiente (veja `.env.example` e `backend/app/config.
 | `SMTP_HOST` e afins | Serviço de e-mail. Vazio = e-mails só no log |
 | `UPLOAD_MAX_MB` | Tamanho máximo de cada foto (padrão 15) |
 | `MAX_TENTATIVAS` | Quantas vezes o worker tenta processar uma foto (padrão 3) |
+| `DIAS_TESTE` | Dias de teste gratuito para contas novas (padrão 30) |
+| `GATEWAY_PAGAMENTO` | Serviço de cobrança. Hoje só `manual` (o administrador ativa os planos) |
 | `EMAIL_CONTATO` | Para onde vão as mensagens do formulário de contato (padrão contato@dbeeas.com.br). Elas também ficam em Administração > Mensagens |
 | `CONFIANCA_REVISAO` | Abaixo desta confiança, fotos sem revisão aparecem como "para conferir" (padrão 0.7) |
 | `EXPORTACAO_DIAS` | Por quantos dias o ZIP exportado fica disponível (padrão 7) |
@@ -157,4 +200,4 @@ Plano completo em [docs/prompt-webapp.md](docs/prompt-webapp.md) e decisões em
 - [x] Etapa 4 – Mapa
 - [x] Etapa 5 – Exportação ZIP com CSV Darwin Core
 - [x] Etapa 6 – Painel, fichas das espécies e página pública
-- [ ] Etapa 7 – Planos e limites de uso
+- [x] Etapa 7 – Planos e limites de uso

@@ -78,6 +78,10 @@ services:
       SMTP_SENHA: ${SMTP_SENHA:-}
       EMAIL_REMETENTE: ${EMAIL_REMETENTE:-DBeeAS <nao-responda@dbeeas.com.br>}
       PESQUISADOR_REQUER_APROVACAO: ${PESQUISADOR_REQUER_APROVACAO:-false}
+      EMAIL_CONTATO: ${EMAIL_CONTATO:-contato@dbeeas.com.br}
+      EXPORTACAO_DIAS: ${EXPORTACAO_DIAS:-7}
+      DIAS_TESTE: ${DIAS_TESTE:-30}
+      GATEWAY_PAGAMENTO: ${GATEWAY_PAGAMENTO:-manual}
     depends_on:
       db:
         condition: service_healthy

@@ -14,6 +14,7 @@ import { Alerta, Carregando } from '../components/ui'
 import { api, mensagemErro } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { dataBR, type Coleta } from '../lib/coletas'
+import SaldoPlano from '../components/SaldoPlano'
 
 interface DadosPainel {
   totais: {
@@ -185,6 +186,8 @@ export default function Painel() {
           normalmente; só a localização exata de espécies sensíveis fica oculta.
         </Alerta>
       )}
+
+      <SaldoPlano />
 
       {dados.isLoading && <Carregando />}
       {dados.error && <Alerta>{mensagemErro(dados.error)}</Alerta>}

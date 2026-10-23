@@ -8,6 +8,7 @@ import type { DragEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Alerta, Botao } from '../components/ui'
 import { API_URL, api, ErroApi, mensagemErro, obterToken, renovarSessao } from '../lib/api'
+import SaldoPlano from '../components/SaldoPlano'
 import { enviarFoto, pct, type Coleta, type Deteccao } from '../lib/coletas'
 
 interface Resultado {
@@ -129,6 +130,7 @@ export default function Identificar() {
       }
     }
     await Promise.all(Array.from({ length: SIMULTANEAS }, trabalhador))
+    cliente.invalidateQueries({ queryKey: ['meu-plano'] })
   }
 
   function adicionar(arquivos: FileList | null) {
@@ -202,8 +204,10 @@ export default function Identificar() {
         <p className="mt-1 max-w-3xl text-sm text-tinta-500">
           Envie uma ou várias fotos de asas e veja as espécies na hora, sem criar coleta. As fotos não ficam
           guardadas, mas no final você pode salvar tudo numa nova coleta. Para registrar local, armadilha e isca,
-          use as <Link to="/coletas" className="font-semibold underline">coletas</Link>.
+          use as <Link to="/coletas" className="font-semibold underline">coletas</Link>. Cada foto conta no limite do
+          plano uma vez só, mesmo se você salvar depois.
         </p>
+        <SaldoPlano className="mt-2" />
       </div>
 
       <div

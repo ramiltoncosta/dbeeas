@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { LayoutApp, LayoutConformeSessao, LayoutConta, LayoutPublico, SomenteAdmin, SomenteVisitante } from './components/Layouts'
 import AdminMensagens from './pages/admin/Mensagens'
+import AdminPlanos from './pages/admin/Planos'
 import FichaEditor from './pages/admin/FichaEditor'
 import Catalogo from './pages/especies/Catalogo'
 import FichaEspecie from './pages/especies/Ficha'
@@ -13,6 +14,7 @@ import Identificar from './pages/Identificar'
 import Mapa from './pages/Mapa'
 import AdminEspecies from './pages/admin/Especies'
 import MinhaConta from './pages/MinhaConta'
+import MeuPlano from './pages/MeuPlano'
 import Painel from './pages/Painel'
 import Inicio from './pages/Inicio'
 import { NaoEncontrada, Privacidade, Termos } from './pages/Publicas'
@@ -50,12 +52,14 @@ export default function App() {
         <Route path="/identificar" element={<Identificar />} />
         <Route path="/mapa" element={<Mapa />} />
         <Route path="/conta" element={<MinhaConta />} />
+        <Route path="/plano" element={<MeuPlano />} />
         <Route element={<SomenteAdmin />}>
           <Route path="/admin/usuarios" element={<AdminUsuarios />} />
           <Route path="/admin" element={<Navigate to="/admin/usuarios" replace />} />
           <Route path="/admin/especies" element={<AdminEspecies />} />
           <Route path="/admin/especies/:id/ficha" element={<FichaEditor />} />
           <Route path="/admin/mensagens" element={<AdminMensagens />} />
+          <Route path="/admin/planos" element={<AdminPlanos />} />
         </Route>
       </Route>
 

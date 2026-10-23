@@ -62,6 +62,14 @@ Registro das decisões tomadas, para consulta futura.
 | 2026-10-23 | Mensagens de contato guardadas no banco além do e-mail; campo escondido contra robôs e limite de 5 por hora | Nada se perde enquanto não houver serviço de e-mail |
 | 2026-10-23 | "Para conferir": fotos identificadas com confiança abaixo de 70% e sem revisão | Indica onde a revisão humana vale mais |
 | 2026-10-23 | Fontes (Inter e Bricolage Grotesque) servidas pelo próprio site | Não envia o IP dos visitantes ao Google (LGPD) e funciona sem depender de outro serviço |
+| 2026-10-23 | Assinaturas como histórico (cada mudança é uma linha nova); pedidos ficam como "pendente" e não substituem o plano que vale | Dá para ver quem mudou o quê e quando; pedir outro plano não bloqueia ninguém |
+| 2026-10-23 | Limite por contador mensal (`uso_mensal`), travado durante o envio (SELECT ... FOR UPDATE) | Apagar fotos não devolve saldo; dois envios ao mesmo tempo não passam do limite |
+| 2026-10-23 | Identificação rápida conta no mesmo limite; a mesma foto salva depois numa coleta não conta de novo | O modelo roda nos dois casos; não cobrar duas vezes pela mesma foto |
+| 2026-10-23 | Bloqueio só do envio; coletas, mapa e exportação seguem liberados com o plano vencido | Os dados são do usuário (LGPD) |
+| 2026-10-23 | Preço em centavos (inteiro) | Evita erros de arredondamento com dinheiro |
+| 2026-10-23 | Interface `GatewayPagamento` (iniciar, cancelar, ler aviso) com o modo manual; avisos em `/v1/pagamentos/webhook/{gateway}` | Integrar Asaas/Mercado Pago/Pagar.me depois sem mexer no resto |
+| 2026-10-23 | Teste gratuito de 30 dias no plano do perfil; contas existentes ganham o mesmo teste na migração | Ninguém fica bloqueado ao atualizar o sistema |
+| 2026-10-23 | Cache das consultas do site apagado ao entrar e sair | Outra pessoa no mesmo navegador não vê dados da anterior |
 | 2026-10-23 | Refresh token trocado a cada uso; se um token antigo reaparecer, todas as sessões da conta são encerradas | Detecta roubo de sessão |
 
 ## Modelo de dados
@@ -72,8 +80,8 @@ Etapa 3: `revisoes`; em `fotos`: `especie_id`, `origem_especie`, `revisada`.
 Etapa 4: em `coletas`: `publica_no_mapa`.
 Etapa 5: `exportacoes`.
 Etapa 6: `fichas_especies` (uma por espécie), `mensagens_contato`.
-
-Próximas etapas: `planos`, `assinaturas`.
+Etapa 7: `planos`, `assinaturas` (histórico; a atual é a mais recente que não é pedido),
+`uso_mensal` (contador por usuário e mês), `fotos_ja_contadas`.
 
 Campos extras: tipo de armadilha, isca atrativa e bioma (na coleta) e sexo do espécime
 (na foto).
