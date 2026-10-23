@@ -1,23 +1,72 @@
 # DBeeAS
 
 Sistema inteligente de reconhecimento de abelhas pela asa.
-RCGJ Sistemas Inteligentes – CNPJ 66.904.746/0001-38
+RCGJ Sistemas Inteligentes – CNPJ 66.904.746/0001-38 · Projeto apoiado pelo Programa Centelha.
 
 ## Estrutura
 
 ```
 dbeeas/
-├── api/                 # API de detecção (FastAPI + YOLO)
-│   ├── app/main.py
-│   ├── Dockerfile
-│   └── requirements.txt
-├── models/              # coloque aqui o best.pt (não vai para o Git)
-└── docker-compose.yml
+├── api/                    # detector: API do modelo YOLO (uso interno)
+├── backend/                # API principal: contas, coletas, mapa, exportação
+│   ├── app/                #   código (FastAPI)
+│   ├── alembic/            #   migrações do banco de dados
+│   └── tests/              #   testes automatizados
+├── frontend/               # site (React)
+├── models/                 # coloque aqui o best.pt (não vai para o Git)
+├── docs/                   # documentação e prompt do projeto
+├── docker-compose.yml      # desenvolvimento
+└── docker-compose.prod.yml # produção
 ```
 
-## Instalar o Docker no Fedora
+Como as partes se conectam:
 
-O Fedora vem com o Podman, mas vamos usar o Docker para ficar igual ao servidor:
+```
+navegador ──► frontend (React)
+          └─► backend (FastAPI) ──► PostgreSQL + PostGIS
+                                └─► detector (YOLO)   [a partir da etapa 2]
+```
+
+## Desenvolvimento (no seu computador)
+
+Pré-requisito: Docker instalado (veja abaixo).
+
+1. Copie o modelo para `models/best.pt`.
+2. Na pasta do projeto:
+
+   ```bash
+   docker compose up --build
+   ```
+
+   A primeira vez demora alguns minutos.
+
+3. Abra:
+
+   | O quê | Endereço |
+   |---|---|
+   | Site | http://localhost:5173 |
+   | Documentação da API | http://localhost:8000/docs |
+   | E-mails de teste (ex.: recuperação de senha) | http://localhost:8025 |
+   | Detector direto | http://localhost:8001/docs |
+
+4. Crie o primeiro administrador (em outro terminal, com o sistema rodando):
+
+   ```bash
+   docker compose exec backend python -m app.cli criar-admin
+   ```
+
+### Testes
+
+```bash
+docker compose exec backend pytest
+```
+
+### Parar
+
+`Ctrl+C` no terminal, ou `docker compose down`. Para apagar também o banco de dados
+de desenvolvimento: `docker compose down -v`.
+
+### Instalar o Docker no Fedora
 
 ```bash
 sudo dnf -y install dnf-plugins-core
@@ -29,34 +78,49 @@ sudo usermod -aG docker $USER
 
 Saia e entre de novo na sessão para o grupo `docker` valer.
 
-## Rodar a API
+## Produção (servidor)
 
-1. Copie o modelo para `models/best.pt`.
-2. Na pasta do projeto:
-
-```bash
-docker compose up --build
-```
-
-A primeira vez demora alguns minutos (baixa o PyTorch).
-
-## Testar
-
-- Documentação interativa: http://localhost:8000/docs
-- Saúde da API: `curl http://localhost:8000/health`
-- Detecção:
+No servidor, na pasta do projeto:
 
 ```bash
-curl -F "file=@asa.jpg" http://localhost:8000/detect
+cp .env.example .env
+nano .env          # preencha senhas e e-mail (instruções dentro do arquivo)
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml exec backend python -m app.cli criar-admin
 ```
 
-- Com a imagem anotada (caixas desenhadas, em base64):
+- Site: https://dbeeas.com.br
+- API: https://api.dbeeas.com.br (documentação em `/docs`)
+- O HTTPS é configurado automaticamente pelo Traefik.
+- O detector não é mais acessível pela internet: só o backend fala com ele.
+
+Ver o que está acontecendo:
 
 ```bash
-curl -F "file=@asa.jpg" "http://localhost:8000/detect?annotate=true"
+docker compose -f docker-compose.prod.yml logs -f backend
 ```
 
-## Configurações (docker-compose.yml)
+### DNS (Registro.br)
+
+| Tipo | Nome | Valor |
+|---|---|---|
+| A | (vazio) | IP do servidor |
+| A | www | IP do servidor |
+| A | api | IP do servidor |
+
+## Configurações do backend
+
+Definidas por variáveis de ambiente (veja `.env.example` e `backend/app/config.py`).
+
+| Variável | O que faz |
+|---|---|
+| `JWT_SECRET` | Segredo dos tokens de login. Obrigatório em produção. |
+| `ACCESS_TOKEN_MINUTOS` | Duração do token de acesso (padrão 15) |
+| `REFRESH_TOKEN_DIAS` | Por quanto tempo a pessoa fica logada (padrão 30) |
+| `SMTP_HOST` e afins | Serviço de e-mail. Vazio = e-mails só no log |
+| `PESQUISADOR_REQUER_APROVACAO` | Se `true`, pesquisadores precisam de aprovação do administrador para ver a localização exata de espécies sensíveis |
+
+## Detector (YOLO)
 
 | Variável | Padrão | O que faz |
 |---|---|---|
@@ -65,3 +129,16 @@ curl -F "file=@asa.jpg" "http://localhost:8000/detect?annotate=true"
 | DETECT_CONFIDENCE | 0.25 | Limiar mínimo do YOLO para considerar uma caixa |
 | IMG_SIZE | 640 | Tamanho da imagem usada no modelo |
 | MAX_UPLOAD_MB | 15 | Tamanho máximo do arquivo enviado |
+
+## Andamento
+
+Plano completo em [docs/prompt-webapp.md](docs/prompt-webapp.md) e decisões em
+[docs/arquitetura.md](docs/arquitetura.md).
+
+- [x] Etapa 1 – Banco de dados, autenticação e perfis
+- [ ] Etapa 2 – Coletas e envio de fotos com fila de processamento
+- [ ] Etapa 3 – Resultado da coleta: agrupamento, gráfico e correção manual
+- [ ] Etapa 4 – Mapa
+- [ ] Etapa 5 – Exportação ZIP com CSV Darwin Core
+- [ ] Etapa 6 – Painel, fichas das espécies e página pública
+- [ ] Etapa 7 – Planos e limites de uso
