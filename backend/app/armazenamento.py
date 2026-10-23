@@ -9,6 +9,7 @@ classe com os mesmos métodos.
 import hashlib
 import hmac
 import os
+import shutil
 import time
 from pathlib import Path
 from typing import Protocol
@@ -19,6 +20,8 @@ from app.config import get_settings
 class Armazenamento(Protocol):
     def salvar(self, chave: str, dados: bytes) -> None: ...
     def ler(self, chave: str) -> bytes: ...
+    def mover_para(self, chave: str, origem: Path) -> None: ...
+    def pasta_temporaria(self) -> Path: ...
     def caminho(self, chave: str) -> Path: ...
     def existe(self, chave: str) -> bool: ...
     def apagar(self, chave: str) -> None: ...
@@ -44,6 +47,18 @@ class ArmazenamentoLocal:
 
     def ler(self, chave: str) -> bytes:
         return self.caminho(chave).read_bytes()
+
+    def mover_para(self, chave: str, origem: Path) -> None:
+        """Guarda um arquivo grande já gravado em disco (sem carregar na memória)."""
+        destino = self.caminho(chave)
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(origem, destino)
+
+    def pasta_temporaria(self) -> Path:
+        """Pasta para arquivos temporários no mesmo disco (mover fica instantâneo)."""
+        pasta = self.raiz / "tmp"
+        pasta.mkdir(parents=True, exist_ok=True)
+        return pasta
 
     def existe(self, chave: str) -> bool:
         return self.caminho(chave).is_file()

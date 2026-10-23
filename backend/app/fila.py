@@ -55,3 +55,21 @@ def enfileirar_fotos(ids: list[str]) -> None:
             retry=Retry(max=retentativas, interval=[15, 60]) if retentativas else None,
             description=f"Processar foto {foto_id}",
         )
+
+
+FILA_EXPORTACOES = "exportacoes"
+
+
+def enfileirar_exportacao(exportacao_id: str) -> None:
+    """Gera o ZIP no worker (fila separada: um ZIP grande não atrasa as fotos)."""
+    if get_settings().fila_sincrona:
+        from app.exportacao import gerar_exportacao
+
+        gerar_exportacao(exportacao_id)
+        return
+    fila(FILA_EXPORTACOES).enqueue(
+        "app.exportacao.gerar_exportacao",
+        exportacao_id,
+        job_timeout=3600,
+        description=f"Exportar {exportacao_id}",
+    )

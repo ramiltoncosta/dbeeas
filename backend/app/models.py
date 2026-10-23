@@ -332,3 +332,47 @@ class Revisao(Base):
     foto: Mapped[Foto] = relationship(back_populates="revisoes")
     especie: Mapped[Especie | None] = relationship()
     usuario: Mapped[Usuario | None] = relationship()
+
+
+# ---------------------------------------------------------------------------
+# Etapa 5: exportação da coleta (amostra digital)
+# ---------------------------------------------------------------------------
+
+
+class StatusExportacao(enum.StrEnum):
+    na_fila = "na_fila"
+    gerando = "gerando"
+    pronta = "pronta"
+    erro = "erro"
+
+
+class TipoImagemExportacao(enum.StrEnum):
+    original = "original"  # arquivo enviado, sem alteração
+    reduzida = "reduzida"  # versão de até 1600 px (arquivo bem menor)
+
+
+class Exportacao(Base):
+    """Arquivo ZIP com as fotos separadas por espécie e a planilha Darwin Core."""
+
+    __tablename__ = "exportacoes"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    coleta_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("coletas.id", ondelete="CASCADE"), index=True
+    )
+    usuario_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="CASCADE"), index=True
+    )
+    tipo_imagem: Mapped[TipoImagemExportacao] = mapped_column(
+        _enum(TipoImagemExportacao, "tipo_imagem_exportacao")
+    )
+    status: Mapped[StatusExportacao] = mapped_column(
+        _enum(StatusExportacao, "status_exportacao"), default=StatusExportacao.na_fila
+    )
+    arquivo: Mapped[str | None] = mapped_column(String(300))
+    tamanho_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    total_fotos: Mapped[int | None] = mapped_column(Integer)
+    erro: Mapped[str | None] = mapped_column(Text)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    concluida_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expira_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

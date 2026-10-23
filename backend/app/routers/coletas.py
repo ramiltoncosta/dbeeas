@@ -19,6 +19,7 @@ from app.imagens import ImagemInvalida, analisar
 from app.models import (
     Coleta,
     Especie,
+    Exportacao,
     Foto,
     Identificacao,
     OrigemLocal,
@@ -187,7 +188,13 @@ def excluir(
         for f in db.scalars(select(Foto).where(Foto.coleta_id == coleta.id))
         for chave in (f.arquivo, f.miniatura, f.media)
         if chave
-    ]
+    ] + list(
+        db.scalars(
+            select(Exportacao.arquivo).where(
+                Exportacao.coleta_id == coleta.id, Exportacao.arquivo.is_not(None)
+            )
+        )
+    )
     db.delete(coleta)
     db.commit()
     apagar_arquivos(arquivos)

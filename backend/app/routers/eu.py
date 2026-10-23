@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
 from app.deps import usuario_atual
-from app.models import Coleta, Foto, Perfil, Usuario
+from app.models import Coleta, Exportacao, Foto, Perfil, Usuario
 from app.routers.coletas import apagar_arquivos
 from app.schemas import (
     AtualizarContaIn,
@@ -135,7 +135,13 @@ def excluir_conta(
         for f in db.scalars(select(Foto).where(Foto.usuario_id == usuario.id))
         for chave in (f.arquivo, f.miniatura, f.media)
         if chave
-    ]
+    ] + list(
+        db.scalars(
+            select(Exportacao.arquivo).where(
+                Exportacao.usuario_id == usuario.id, Exportacao.arquivo.is_not(None)
+            )
+        )
+    )
     db.delete(usuario)
     db.commit()
     apagar_arquivos(arquivos)  # as fotos também são apagadas do servidor

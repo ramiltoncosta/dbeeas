@@ -6,6 +6,7 @@ import { Alerta, Botao, Carregando } from '../../components/ui'
 import { api, mensagemErro, urlArquivo } from '../../lib/api'
 import { BIOMAS, dataBR, type Coleta, type Contagem, type Foto, type Pagina, type ResumoColeta } from '../../lib/coletas'
 import Envio from './Envio'
+import Exportar from './Exportar'
 import FotoModal, { Selo } from './FotoModal'
 import MapaDaColeta from './MapaDaColeta'
 import { parametrosFiltro, type Filtro } from '../../lib/filtros'
@@ -183,6 +184,8 @@ export default function DetalheColeta() {
           <MapaDaColeta coletaId={id} identificadas={resumo.data.identificadas} aoAbrirFoto={abrirFoto} />
         </div>
       )}
+
+      {resumo.data && resumo.data.total > 0 && <Exportar coletaId={id} progresso={progresso.data} />}
 
       {resumo.data && resumo.data.total > 0 && (
         <section className="space-y-3">

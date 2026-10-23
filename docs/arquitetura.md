@@ -49,6 +49,12 @@ Registro das decisões tomadas, para consulta futura.
 | 2026-10-23 | Cada coleta pode sair do mapa geral (`publica_no_mapa`); o padrão é aparecer | Locais sigilosos, como propriedades particulares |
 | 2026-10-23 | Localização aproximada: ponto trocado pelo centro de uma célula fixa do tamanho do raio da espécie | Ruído aleatório pode ser "desfeito" consultando várias vezes; a célula fixa não |
 | 2026-10-23 | No mapa, até 3 espécies com cor própria; as demais em cinza ("outras") | Mais de 3 cores em pontos espalhados não se distinguem bem, sobretudo com daltonismo |
+| 2026-10-23 | ZIP da exportação gerado no worker (fila `exportacoes`), com aviso por e-mail e link assinado | Coletas grandes levariam minutos; a tela não fica travada esperando |
+| 2026-10-23 | Fotos guardadas no ZIP sem nova compressão; só o CSV e o LEIA-ME são comprimidos | JPEG já é comprimido: comprimir de novo gasta processador e não reduz o tamanho |
+| 2026-10-23 | Uma pasta por espécie final; `nao_identificadas` e `nao_processadas` à parte; número na frente do nome do arquivo | Duas fotos com o mesmo nome não se sobrescrevem |
+| 2026-10-23 | CSV com termos Darwin Core + colunas `dbeeas_*`; UTF-8 com BOM, separado por vírgula | Padrão aceito por SiBBr/GBIF; o BOM faz o Excel mostrar os acentos |
+| 2026-10-23 | `basisOfRecord`: MachineObservation (só o modelo) ou HumanObservation (conferida por pessoa) | Quem usa os dados sabe o que foi verificado |
+| 2026-10-23 | ZIP fica 7 dias; um novo do mesmo tipo substitui o anterior | Economiza espaço no servidor |
 | 2026-10-23 | Refresh token trocado a cada uso; se um token antigo reaparecer, todas as sessões da conta são encerradas | Detecta roubo de sessão |
 
 ## Modelo de dados
@@ -57,8 +63,9 @@ Etapa 1: `usuarios`, `tokens`.
 Etapa 2: `especies`, `modelos`, `coletas`, `fotos`, `identificacoes`.
 Etapa 3: `revisoes`; em `fotos`: `especie_id`, `origem_especie`, `revisada`.
 Etapa 4: em `coletas`: `publica_no_mapa`.
+Etapa 5: `exportacoes`.
 
-Próximas etapas: `exportacoes`, `planos`, `assinaturas`.
+Próximas etapas: `planos`, `assinaturas`.
 
 Campos extras: tipo de armadilha, isca atrativa e bioma (na coleta) e sexo do espécime
 (na foto).

@@ -18,6 +18,7 @@ from app.routers import (
     coletas,
     especies,
     eu,
+    exportacoes,
     fotos,
     identificar,
     mapa,
@@ -29,7 +30,7 @@ app = FastAPI(
     title="DBeeAS",
     description="Sistema inteligente de reconhecimento de abelhas pela asa. "
     "API usada pelo site e pelo aplicativo.",
-    version="0.5.0",
+    version="0.6.0",
 )
 
 app.state.limiter = limiter
@@ -50,6 +51,7 @@ for r in (
     fotos.router,
     especies.router,
     mapa.router,
+    exportacoes.router,
     identificar.router,
     arquivos.router,
     admin.router,
