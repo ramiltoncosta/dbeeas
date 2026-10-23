@@ -88,6 +88,8 @@ export function LayoutApp() {
 
   const links = [
     { para: '/painel', texto: 'Painel' },
+    { para: '/coletas', texto: 'Coletas' },
+    { para: '/identificar', texto: 'Identificar' },
     { para: '/conta', texto: 'Minha conta' },
     ...(usuario.perfil === 'admin' ? [{ para: '/admin/usuarios', texto: 'Usuários' }] : []),
   ]

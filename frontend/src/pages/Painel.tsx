@@ -22,17 +22,19 @@ export default function Painel() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">
-        {[
-          ['Coletas', 'Organize as fotos de cada saída de campo.'],
-          ['Identificações', 'Envie fotos da asa e veja a espécie.'],
-          ['Mapa', 'Veja onde cada espécie foi encontrada.'],
-        ].map(([titulo, texto]) => (
-          <Cartao key={titulo} className="border-dashed">
-            <p className="text-xs font-semibold uppercase tracking-wide text-mel-700">Em breve</p>
-            <h2 className="mt-1 text-lg font-bold text-tinta-800">{titulo}</h2>
-            <p className="mt-1 text-sm text-tinta-500">{texto}</p>
-          </Cartao>
-        ))}
+        <Link to="/coletas" className="rounded-2xl border border-tinta-100 bg-white p-6 shadow-sm transition hover:border-mel-400">
+          <h2 className="text-lg font-bold text-tinta-800">Coletas</h2>
+          <p className="mt-1 text-sm text-tinta-500">Organize as fotos de cada saída de campo e identifique várias de uma vez.</p>
+        </Link>
+        <Link to="/identificar" className="rounded-2xl border border-tinta-100 bg-white p-6 shadow-sm transition hover:border-mel-400">
+          <h2 className="text-lg font-bold text-tinta-800">Identificação rápida</h2>
+          <p className="mt-1 text-sm text-tinta-500">Envie uma foto da asa e veja a espécie na hora.</p>
+        </Link>
+        <Cartao className="border-dashed">
+          <p className="text-xs font-semibold uppercase tracking-wide text-mel-700">Em breve</p>
+          <h2 className="mt-1 text-lg font-bold text-tinta-800">Mapa</h2>
+          <p className="mt-1 text-sm text-tinta-500">Veja onde cada espécie foi encontrada.</p>
+        </Cartao>
       </div>
 
       <p className="text-sm text-tinta-500">
