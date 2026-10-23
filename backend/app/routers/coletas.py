@@ -163,6 +163,8 @@ def atualizar(
 ):
     coleta = obter_coleta(db, coleta_id, usuario)
     enviados = dados.model_fields_set
+    if "publica_no_mapa" in enviados and dados.publica_no_mapa is None:
+        enviados = enviados - {"publica_no_mapa"}
     if "nome" in enviados and dados.nome is None:
         raise HTTPException(422, "O nome da coleta é obrigatório.")
     for campo in enviados - {"local"}:

@@ -50,6 +50,7 @@ class _CamposColeta(BaseModel):
     bioma: Bioma | None = None
     observacoes: str | None = Field(default=None, max_length=5000)
     local: Ponto | None = None
+    publica_no_mapa: bool = True
 
     @field_validator(
         "descricao", "municipio", "coletor", "tipo_armadilha", "isca_atrativa", "observacoes",
@@ -117,6 +118,7 @@ class ColetaOut(BaseModel):
     bioma: Bioma | None
     observacoes: str | None
     local: Ponto | None
+    publica_no_mapa: bool
     criado_em: datetime
     atualizado_em: datetime
     fotos: Contagem = Contagem()
@@ -138,6 +140,7 @@ class ColetaOut(BaseModel):
             bioma=c.bioma,
             observacoes=c.observacoes,
             local=Ponto(latitude=lat, longitude=lon) if lat is not None else None,
+            publica_no_mapa=c.publica_no_mapa,
             criado_em=c.criado_em,
             atualizado_em=c.atualizado_em,
             fotos=contagem or Contagem(),
@@ -334,4 +337,13 @@ class EspecieOut(BaseModel):
     id: int
     nome_cientifico: str
     sensivel: bool
+    raio_ofuscacao_km: float
     reconhecida_pelo_modelo: bool
+
+
+# --- Mapa (etapa 4) ------------------------------------------------------------
+
+
+class AdminEspecieIn(BaseModel):
+    sensivel: bool | None = None
+    raio_ofuscacao_km: float | None = Field(default=None, ge=1, le=100)

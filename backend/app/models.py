@@ -160,6 +160,9 @@ class Coleta(Base):
     isca_atrativa: Mapped[str | None] = mapped_column(String(150))
     bioma: Mapped[Bioma | None] = mapped_column(_enum(Bioma, "bioma"))
     observacoes: Mapped[str | None] = mapped_column(Text)
+    # Se True, as ocorrências desta coleta aparecem no mapa geral da plataforma
+    # (sem fotos nem nome da coleta, e com localização aproximada para espécies sensíveis)
+    publica_no_mapa: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     # Ponto geral da coleta. Fotos sem localização própria usam este ponto.
     local: Mapped[Any | None] = mapped_column(Geography("POINT", srid=4326, spatial_index=False))
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
