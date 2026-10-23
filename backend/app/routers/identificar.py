@@ -3,6 +3,8 @@
 Conta no limite de fotos do plano, como as fotos das coletas.
 """
 
+import hashlib
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
@@ -38,17 +40,22 @@ def identificar(
         raise HTTPException(415, str(e)) from e
 
     # Reserva uma foto do saldo e libera a trava antes de chamar o detector (leva segundos)
+    sha = hashlib.sha256(dados).hexdigest()
     cota = Cota(db, usuario)
     if not cota.pegar("identificacoes_rapidas"):
         db.rollback()
         raise HTTPException(403, cota.situacao.motivo_bloqueio)
+    # Se depois salvar esta foto numa coleta, ela não conta de novo
+    cota.marcar_contada(sha)
     db.commit()
 
     try:
         return detector.detectar(corpo, mime, arquivo.filename or "foto", True)
     except (detector.ImagemRecusada, detector.DetectorIndisponivel) as e:
         # Não identificou: devolve a foto ao saldo
-        Cota(db, usuario).devolver("identificacoes_rapidas")
+        cota = Cota(db, usuario)
+        cota.devolver("identificacoes_rapidas")
+        cota.ja_contada(sha)  # remove o crédito
         db.commit()
         if isinstance(e, detector.ImagemRecusada):
             raise HTTPException(415, str(e)) from e

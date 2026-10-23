@@ -288,3 +288,19 @@ def test_pagamento_automatico_pela_interface(client, token, monkeypatch):
 
     aviso("pago")
     assert _plano(client, token)["status"] == "ativa"
+
+
+def test_foto_da_identificacao_rapida_nao_conta_duas_vezes(client, token, detector):
+    foto = imagem(cor=(10, 200, 30))
+    r = client.post(
+        "/v1/identificar", files={"arquivo": ("a.jpg", foto, "image/jpeg")}, headers=auth(token)
+    )
+    assert r.status_code == 200
+    c = criar_coleta(client, token)
+    enviar(client, token, c["id"], ("a.jpg", foto))  # salva a mesma foto numa coleta
+    uso = _plano(client, token)["uso"]
+    assert uso["usadas"] == 1 and uso["identificacoes_rapidas"] == 1 and uso["fotos"] == 0
+    # Numa segunda coleta, a mesma foto já conta (o crédito vale uma vez)
+    c2 = criar_coleta(client, token)
+    enviar(client, token, c2["id"], ("a.jpg", foto))
+    assert _plano(client, token)["uso"]["usadas"] == 2

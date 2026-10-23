@@ -289,7 +289,7 @@ def enviar_fotos(
         if sha in existentes:
             rejeitadas.append(Rejeitada(arquivo=nome, motivo="Esta foto já está na coleta."))
             continue
-        if not cota.pegar():
+        if not (cota.ja_contada(sha) or cota.pegar()):
             motivo = "Limite de fotos do plano atingido neste mês."
             rejeitadas.append(Rejeitada(arquivo=nome, motivo=motivo))
             continue

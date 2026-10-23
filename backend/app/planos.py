@@ -19,7 +19,15 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models import Assinatura, Perfil, Plano, StatusAssinatura, UsoMensal, Usuario
+from app.models import (
+    Assinatura,
+    FotoJaContada,
+    Perfil,
+    Plano,
+    StatusAssinatura,
+    UsoMensal,
+    Usuario,
+)
 from app.security import agora
 
 STATUS_QUE_LIBERAM = (StatusAssinatura.teste, StatusAssinatura.ativa)
@@ -158,6 +166,20 @@ class Cota:
             self.restantes -= 1
         setattr(self.uso, campo, getattr(self.uso, campo) + 1)
         return True
+
+    def ja_contada(self, sha256: str) -> bool:
+        """A foto já entrou no limite deste mês pela identificação rápida?
+        Se sim, usa esse crédito (vale uma vez) e não conta de novo."""
+        registro = self.db.get(FotoJaContada, (self.uso.usuario_id, sha256))
+        if registro is None or registro.mes != self.uso.mes:
+            return False
+        self.db.delete(registro)
+        return True
+
+    def marcar_contada(self, sha256: str) -> None:
+        self.db.merge(
+            FotoJaContada(usuario_id=self.uso.usuario_id, sha256=sha256, mes=self.uso.mes)
+        )
 
     def devolver(self, campo: str = "fotos") -> None:
         setattr(self.uso, campo, max(0, getattr(self.uso, campo) - 1))

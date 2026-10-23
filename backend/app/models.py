@@ -512,3 +512,18 @@ class UsoMensal(Base):
     mes: Mapped[date] = mapped_column(Date, primary_key=True)  # sempre o dia 1
     fotos: Mapped[int] = mapped_column(Integer, default=0)
     identificacoes_rapidas: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class FotoJaContada(Base):
+    """Fotos da identificação rápida que já entraram no limite do mês.
+
+    Se a pessoa salvar essas mesmas fotos numa coleta, elas não contam de novo.
+    """
+
+    __tablename__ = "fotos_ja_contadas"
+
+    usuario_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True
+    )
+    sha256: Mapped[str] = mapped_column(String(64), primary_key=True)
+    mes: Mapped[date] = mapped_column(Date, index=True)

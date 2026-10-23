@@ -81,6 +81,16 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("usuario_id", "mes"),
     )
 
+    op.create_table(
+        "fotos_ja_contadas",
+        sa.Column("usuario_id", sa.Uuid(), nullable=False),
+        sa.Column("sha256", sa.String(length=64), nullable=False),
+        sa.Column("mes", sa.Date(), nullable=False),
+        sa.ForeignKeyConstraint(["usuario_id"], ["usuarios.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("usuario_id", "sha256"),
+    )
+    op.create_index(op.f("ix_fotos_ja_contadas_mes"), "fotos_ja_contadas", ["mes"], unique=False)
+
     # Planos iniciais (preço vazio = a definir; o administrador ajusta pelo site)
     planos = sa.table(
         "planos",
@@ -155,6 +165,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.drop_index(op.f("ix_fotos_ja_contadas_mes"), table_name="fotos_ja_contadas")
+    op.drop_table("fotos_ja_contadas")
     op.drop_table("uso_mensal")
     op.drop_index(op.f("ix_assinaturas_usuario_id"), table_name="assinaturas")
     op.drop_index(op.f("ix_assinaturas_criado_em"), table_name="assinaturas")
