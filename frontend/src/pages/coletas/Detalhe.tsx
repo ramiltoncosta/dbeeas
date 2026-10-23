@@ -7,6 +7,7 @@ import { api, mensagemErro, urlArquivo } from '../../lib/api'
 import { BIOMAS, dataBR, type Coleta, type Contagem, type Foto, type Pagina, type ResumoColeta } from '../../lib/coletas'
 import Envio from './Envio'
 import FotoModal, { Selo } from './FotoModal'
+import MapaDaColeta from './MapaDaColeta'
 import { parametrosFiltro, type Filtro } from '../../lib/filtros'
 import { FiltrosFotos, GraficoEspecies } from './Resultado'
 
@@ -105,6 +106,7 @@ export default function DetalheColeta() {
     if (prontas !== null && prontasAntes.current !== null && prontas !== prontasAntes.current) {
       cliente.invalidateQueries({ queryKey: ['fotos', id] })
       cliente.invalidateQueries({ queryKey: ['resumo', id] })
+      cliente.invalidateQueries({ queryKey: ['mapa'] })
     }
     prontasAntes.current = prontas
   }, [prontas, cliente, id])
@@ -115,6 +117,11 @@ export default function DetalheColeta() {
       setFiltro({ tipo: 'todas' })
     }
   }, [filtro, resumo.data])
+
+  // Abre a foto clicada no mapa (busca os dados completos dela)
+  const abrirFoto = (fotoId: string) => {
+    api<Foto>(`/v1/fotos/${fotoId}`).then(setFotoAberta).catch(() => {})
+  }
 
   const excluir = useMutation({
     mutationFn: () => api(`/v1/coletas/${id}`, { method: 'DELETE' }),
@@ -135,7 +142,7 @@ export default function DetalheColeta() {
         <Link to="/coletas" className="text-sm font-semibold text-tinta-500 hover:text-tinta-800">← Coletas</Link>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
           <h1 className="text-2xl font-bold text-tinta-900">{c.nome}</h1>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Link to={`/coletas/${id}/editar`} className="rounded-lg border border-tinta-100 bg-white px-4 py-2 text-sm font-semibold text-tinta-800 hover:bg-tinta-50">
               Editar
             </Link>
@@ -163,15 +170,18 @@ export default function DetalheColeta() {
       {progresso.data && progresso.data.na_fila + progresso.data.processando > 0 && <Andamento c={progresso.data} />}
 
       {resumo.data && resumo.data.total > 0 && (
-        <section className="rounded-2xl border border-tinta-100 bg-white p-5 shadow-sm">
-          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-lg font-bold text-tinta-800">Espécies na coleta</h2>
-            {resumo.data.revisadas > 0 && (
-              <span className="text-xs text-tinta-500">{resumo.data.revisadas} foto(s) revisada(s) por pessoas</span>
-            )}
-          </div>
-          <GraficoEspecies resumo={resumo.data} filtro={filtro} aoFiltrar={setFiltro} />
-        </section>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <section className="rounded-2xl border border-tinta-100 bg-white p-5 shadow-sm">
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-lg font-bold text-tinta-800">Espécies na coleta</h2>
+              {resumo.data.revisadas > 0 && (
+                <span className="text-xs text-tinta-500">{resumo.data.revisadas} foto(s) revisada(s) por pessoas</span>
+              )}
+            </div>
+            <GraficoEspecies resumo={resumo.data} filtro={filtro} aoFiltrar={setFiltro} />
+          </section>
+          <MapaDaColeta coletaId={id} identificadas={resumo.data.identificadas} aoAbrirFoto={abrirFoto} />
+        </div>
       )}
 
       {resumo.data && resumo.data.total > 0 && (

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import SeletorLocal from '../../components/SeletorLocal'
-import { Alerta, Botao, Campo, Carregando, Cartao, Selecao } from '../../components/ui'
+import { Alerta, Botao, Caixa, Campo, Carregando, Cartao, Selecao } from '../../components/ui'
 import { api, mensagemErro } from '../../lib/api'
 import { BIOMAS, UFS, type CamposColeta, type Coleta } from '../../lib/coletas'
 
@@ -20,6 +20,7 @@ const VAZIO: CamposColeta = {
   bioma: null,
   observacoes: null,
   local: null,
+  publica_no_mapa: true,
 }
 
 const CAMPOS = Object.keys(VAZIO) as (keyof CamposColeta)[]
@@ -100,6 +101,13 @@ function Form({ inicial, coletaId }: { inicial: CamposColeta; coletaId?: string 
           </p>
           <SeletorLocal valor={dados.local} aoMudar={(p) => mudar('local', p)} />
         </div>
+        <Caixa checked={dados.publica_no_mapa} onChange={(e) => mudar('publica_no_mapa', e.target.checked)}>
+          Mostrar as ocorrências desta coleta no mapa geral da plataforma
+          <span className="block text-xs text-tinta-500">
+            Outras pessoas veem só a espécie, a data e o ponto (aproximado, no caso de espécies sensíveis), sem fotos
+            nem o nome da coleta. Desmarque se o local for sigiloso, como uma propriedade particular.
+          </span>
+        </Caixa>
       </Cartao>
 
       <Cartao className="space-y-4">

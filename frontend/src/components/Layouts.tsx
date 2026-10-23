@@ -90,8 +90,14 @@ export function LayoutApp() {
     { para: '/painel', texto: 'Painel' },
     { para: '/coletas', texto: 'Coletas' },
     { para: '/identificar', texto: 'Identificar' },
+    { para: '/mapa', texto: 'Mapa' },
     { para: '/conta', texto: 'Minha conta' },
-    ...(usuario.perfil === 'admin' ? [{ para: '/admin/usuarios', texto: 'Usuários' }] : []),
+    ...(usuario.perfil === 'admin'
+      ? [
+          { para: '/admin/usuarios', texto: 'Usuários' },
+          { para: '/admin/especies', texto: 'Espécies' },
+        ]
+      : []),
   ]
 
   const estiloLink = ({ isActive }: { isActive: boolean }) =>

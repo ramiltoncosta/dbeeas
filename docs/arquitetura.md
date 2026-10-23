@@ -44,6 +44,11 @@ Registro das decisões tomadas, para consulta futura.
 | 2026-10-23 | Reprocessar uma foto com um modelo novo não desfaz a revisão de uma pessoa | A revisão humana vale mais que o modelo |
 | 2026-10-23 | Na correção, o pesquisador pode informar uma espécie que o modelo não conhece (nome científico validado) | Registra espécies novas e gera dados para ampliar o modelo |
 | 2026-10-23 | Porcentagens do gráfico calculadas só sobre as fotos identificadas | Não identificadas não distorcem a proporção entre espécies |
+| 2026-10-23 | Mapa com dois modos: "Minhas coletas" e "Toda a plataforma" | O valor para pesquisa e governo está em ver a distribuição de todas as ocorrências |
+| 2026-10-23 | No modo "Toda a plataforma", ocorrências de outras pessoas aparecem sem foto, sem nome da coleta e sem quem coletou | Protege os dados de quem coletou |
+| 2026-10-23 | Cada coleta pode sair do mapa geral (`publica_no_mapa`); o padrão é aparecer | Locais sigilosos, como propriedades particulares |
+| 2026-10-23 | Localização aproximada: ponto trocado pelo centro de uma célula fixa do tamanho do raio da espécie | Ruído aleatório pode ser "desfeito" consultando várias vezes; a célula fixa não |
+| 2026-10-23 | No mapa, até 3 espécies com cor própria; as demais em cinza ("outras") | Mais de 3 cores em pontos espalhados não se distinguem bem, sobretudo com daltonismo |
 | 2026-10-23 | Refresh token trocado a cada uso; se um token antigo reaparecer, todas as sessões da conta são encerradas | Detecta roubo de sessão |
 
 ## Modelo de dados
@@ -51,6 +56,7 @@ Registro das decisões tomadas, para consulta futura.
 Etapa 1: `usuarios`, `tokens`.
 Etapa 2: `especies`, `modelos`, `coletas`, `fotos`, `identificacoes`.
 Etapa 3: `revisoes`; em `fotos`: `especie_id`, `origem_especie`, `revisada`.
+Etapa 4: em `coletas`: `publica_no_mapa`.
 
 Próximas etapas: `exportacoes`, `planos`, `assinaturas`.
 

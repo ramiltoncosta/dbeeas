@@ -44,6 +44,7 @@ export interface CamposColeta {
   bioma: Bioma | null
   observacoes: string | null
   local: Ponto | null
+  publica_no_mapa: boolean
 }
 
 export interface Coleta extends CamposColeta {
@@ -139,6 +140,7 @@ export interface Especie {
   id: number
   nome_cientifico: string
   sensivel: boolean
+  raio_ofuscacao_km: number
   reconhecida_pelo_modelo: boolean
 }
 
