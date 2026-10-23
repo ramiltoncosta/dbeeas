@@ -5,6 +5,7 @@ export type Filtro =
   | { tipo: 'especie'; id: number; nome: string }
   | { tipo: 'nao_identificadas' }
   | { tipo: 'revisadas' }
+  | { tipo: 'para_revisar' }
   | { tipo: 'pendentes' }
   | { tipo: 'erro' }
 
@@ -18,6 +19,7 @@ export function parametrosFiltro(f: Filtro): Record<string, string> {
       return { especie_id: String(f.id) }
     case 'nao_identificadas':
     case 'revisadas':
+    case 'para_revisar':
     case 'pendentes':
       return { grupo: f.tipo }
     case 'erro':

@@ -55,6 +55,13 @@ Registro das decisões tomadas, para consulta futura.
 | 2026-10-23 | CSV com termos Darwin Core + colunas `dbeeas_*`; UTF-8 com BOM, separado por vírgula | Padrão aceito por SiBBr/GBIF; o BOM faz o Excel mostrar os acentos |
 | 2026-10-23 | `basisOfRecord`: MachineObservation (só o modelo) ou HumanObservation (conferida por pessoa) | Quem usa os dados sabe o que foi verificado |
 | 2026-10-23 | ZIP fica 7 dias; um novo do mesmo tipo substitui o anterior | Economiza espaço no servidor |
+| 2026-10-23 | Fichas em tabela própria, com rascunho e publicação | Texto escrito e revisado por especialistas antes de ir ao ar |
+| 2026-10-23 | Texto das fichas com formatação simples (parágrafo, lista, negrito, itálico, link), desenhada pelo site sem aceitar HTML | Itálico para nomes científicos sem risco de código malicioso na página |
+| 2026-10-23 | Imagem da ficha reduzida para 1600 px e sem metadados | Página pública mais leve e sem vazar o GPS da foto |
+| 2026-10-23 | Catálogo público: espécies do modelo ou com ficha publicada; números só de coletas visíveis no mapa geral | Respeita quem tirou a coleta do mapa |
+| 2026-10-23 | Mensagens de contato guardadas no banco além do e-mail; campo escondido contra robôs e limite de 5 por hora | Nada se perde enquanto não houver serviço de e-mail |
+| 2026-10-23 | "Para conferir": fotos identificadas com confiança abaixo de 70% e sem revisão | Indica onde a revisão humana vale mais |
+| 2026-10-23 | Fontes (Inter e Bricolage Grotesque) servidas pelo próprio site | Não envia o IP dos visitantes ao Google (LGPD) e funciona sem depender de outro serviço |
 | 2026-10-23 | Refresh token trocado a cada uso; se um token antigo reaparecer, todas as sessões da conta são encerradas | Detecta roubo de sessão |
 
 ## Modelo de dados
@@ -64,6 +71,7 @@ Etapa 2: `especies`, `modelos`, `coletas`, `fotos`, `identificacoes`.
 Etapa 3: `revisoes`; em `fotos`: `especie_id`, `origem_especie`, `revisada`.
 Etapa 4: em `coletas`: `publica_no_mapa`.
 Etapa 5: `exportacoes`.
+Etapa 6: `fichas_especies` (uma por espécie), `mensagens_contato`.
 
 Próximas etapas: `planos`, `assinaturas`.
 

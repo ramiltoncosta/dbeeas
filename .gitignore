@@ -4,6 +4,8 @@ models/*.onnx
 *.jpg
 *.jpeg
 *.png
+# ...exceto as imagens do site
+!frontend/public/*.png
 __pycache__/
 .venv/
 .env

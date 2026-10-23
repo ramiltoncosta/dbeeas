@@ -64,6 +64,28 @@ def obter_coleta(db: Session, coleta_id: uuid.UUID, usuario: Usuario) -> Coleta:
     return coleta
 
 
+def confianca_atual():
+    """Confiança da identificação mais recente da foto (subconsulta)."""
+    return (
+        select(Identificacao.confianca)
+        .where(Identificacao.foto_id == Foto.id)
+        .order_by(Identificacao.criado_em.desc())
+        .limit(1)
+        .scalar_subquery()
+    )
+
+
+def para_revisar():
+    """Fotos que vale a pena uma pessoa conferir: identificadas pelo modelo com
+    confiança baixa e ainda sem revisão."""
+    return (
+        (Foto.status == StatusFoto.concluida)
+        & Foto.especie_id.is_not(None)
+        & Foto.revisada.is_(False)
+        & (confianca_atual() < get_settings().confianca_revisao)
+    )
+
+
 def contar_fotos(db: Session, coleta_ids: list[uuid.UUID]) -> dict[uuid.UUID, Contagem]:
     if not coleta_ids:
         return {}
@@ -318,8 +340,10 @@ def listar_fotos(
     coleta_id: uuid.UUID,
     status_foto: StatusFoto | None = Query(None, alias="status"),
     especie_id: int | None = Query(None, description="Só as fotos desta espécie (espécie final)"),
-    grupo: Literal["nao_identificadas", "pendentes", "revisadas"] | None = Query(
-        None, description="nao_identificadas, pendentes (na fila ou processando) ou revisadas"
+    grupo: Literal["nao_identificadas", "pendentes", "revisadas", "para_revisar"] | None = Query(
+        None,
+        description="nao_identificadas, pendentes (na fila ou processando), revisadas ou "
+        "para_revisar (confiança baixa e sem revisão)",
     ),
     pagina: int = Query(1, ge=1),
     por_pagina: int = Query(60, ge=1, le=500),
@@ -338,6 +362,8 @@ def listar_fotos(
         filtros.append(Foto.status.in_([StatusFoto.na_fila, StatusFoto.processando]))
     elif grupo == "revisadas":
         filtros.append(Foto.revisada.is_(True))
+    elif grupo == "para_revisar":
+        filtros.append(para_revisar())
     total = db.scalar(select(func.count()).select_from(Foto).where(*filtros))
     fotos = db.scalars(
         select(Foto)
@@ -400,6 +426,12 @@ def resumo(
         identificadas=c.identificadas,
         nao_identificadas=c.nao_identificadas,
         revisadas=revisadas,
+        para_revisar=db.scalar(
+            select(func.count())
+            .select_from(Foto)
+            .where(Foto.coleta_id == coleta.id, para_revisar())
+        ),
+        limite_confianca_revisao=get_settings().confianca_revisao,
         especies=[
             EspecieNoResumo(
                 id=eid,

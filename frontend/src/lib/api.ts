@@ -161,3 +161,26 @@ export async function baixarArquivo(caminho: string, nomeArquivo: string) {
   link.click()
   URL.revokeObjectURL(url)
 }
+
+/** Envia um arquivo (multipart) para a API e devolve a resposta em JSON. */
+export async function enviarArquivo<T>(caminho: string, campo: string, arquivo: File): Promise<T> {
+  const fazer = () => {
+    const corpo = new FormData()
+    corpo.append(campo, arquivo)
+    return fetch(`${API_URL}${caminho}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: tokenAcesso ? { Authorization: `Bearer ${tokenAcesso}` } : {},
+      body: corpo,
+    })
+  }
+  let r: Response
+  try {
+    r = await fazer()
+  } catch {
+    throw new ErroApi(0, 'Sem conexão com o servidor. Verifique sua internet.')
+  }
+  if (r.status === 401 && tokenAcesso && (await renovarSessao())) r = await fazer()
+  if (!r.ok) throw new ErroApi(r.status, await lerErro(r))
+  return (await r.json()) as T
+}

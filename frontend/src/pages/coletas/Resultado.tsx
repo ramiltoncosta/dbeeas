@@ -86,6 +86,11 @@ export function FiltrosFotos({ resumo, filtro, aoFiltrar }: FiltrosProps) {
       n: e.quantidade,
     })),
     { f: { tipo: 'nao_identificadas' }, rotulo: 'Não identificadas', n: resumo.nao_identificadas },
+    {
+      f: { tipo: 'para_revisar' },
+      rotulo: `Para conferir (confiança < ${Math.round(resumo.limite_confianca_revisao * 100)}%)`,
+      n: resumo.para_revisar,
+    },
     { f: { tipo: 'revisadas' }, rotulo: 'Revisadas', n: resumo.revisadas },
     { f: { tipo: 'pendentes' }, rotulo: 'Na fila', n: resumo.pendentes },
     { f: { tipo: 'erro' }, rotulo: 'Com erro', n: resumo.erro },

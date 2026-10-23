@@ -7,11 +7,16 @@ import { Carregando, Logo } from './ui'
 export function Rodape() {
   return (
     <footer className="border-t border-tinta-100 bg-white">
-      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-sm text-tinta-500 sm:flex-row sm:items-center sm:justify-between">
-        <p>
-          DBeeAS · RCGJ Sistemas Inteligentes · Projeto apoiado pelo Programa Centelha
-        </p>
-        <nav className="flex gap-4">
+      <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 text-sm text-tinta-500 sm:grid-cols-[auto_1fr_auto] sm:items-center">
+        <img src="/rcgj.png" alt="RCGJ Sistemas Inteligentes" width={72} height={66} className="h-16 w-auto" />
+        <div className="space-y-1">
+          <p className="font-semibold text-tinta-800">DBeeAS – Sistema inteligente de reconhecimento de abelhas pela asa</p>
+          <p>Desenvolvido pela RCGJ Sistemas Inteligentes, CNPJ 66.904.746/0001-38.</p>
+          <p>Projeto apoiado pelo Programa Centelha.</p>
+        </div>
+        <nav aria-label="Links do rodapé" className="flex flex-wrap gap-x-4 gap-y-2">
+          <Link to="/especies" className="hover:text-tinta-800">Espécies</Link>
+          <Link to="/#contato" className="hover:text-tinta-800">Contato</Link>
           <Link to="/termos" className="hover:text-tinta-800">Termos de uso</Link>
           <Link to="/privacidade" className="hover:text-tinta-800">Privacidade</Link>
         </nav>
@@ -41,8 +46,9 @@ export function LayoutConta() {
   )
 }
 
-/** Páginas públicas (início, termos, privacidade) */
-export function LayoutPublico() {
+/** Páginas públicas (início, termos, privacidade).
+ *  `contido`: centraliza o conteúdo com margens (usado nas páginas de espécies). */
+export function LayoutPublico({ contido = false }: { contido?: boolean }) {
   const { usuario } = useAuth()
   return (
     <div className="flex min-h-screen flex-col">
@@ -51,17 +57,26 @@ export function LayoutPublico() {
           <Link to="/" aria-label="Página inicial do DBeeAS">
             <Logo />
           </Link>
-          <nav className="flex items-center gap-2 text-sm font-semibold">
+          <nav className="flex items-center gap-1 whitespace-nowrap text-sm font-semibold sm:gap-2">
+            <NavLink
+              to="/especies"
+              className={({ isActive }) =>
+                // No celular, "Espécies" fica no rodapé e na página inicial (não cabe no topo)
+                `hidden rounded-lg px-3 py-2 hover:bg-tinta-50 sm:inline-block ${isActive ? 'text-tinta-900 underline underline-offset-4' : 'text-tinta-800'}`
+              }
+            >
+              Espécies
+            </NavLink>
             {usuario ? (
               <Link to="/painel" className="rounded-lg bg-tinta-700 px-4 py-2 text-white hover:bg-tinta-800">
                 Ir para o painel
               </Link>
             ) : (
               <>
-                <Link to="/entrar" className="rounded-lg px-3 py-2 text-tinta-800 hover:bg-tinta-50">
+                <Link to="/entrar" className="rounded-lg px-2 py-2 text-tinta-800 hover:bg-tinta-50 sm:px-3">
                   Entrar
                 </Link>
-                <Link to="/cadastrar" className="rounded-lg bg-mel-500 px-4 py-2 text-tinta-900 hover:bg-mel-400">
+                <Link to="/cadastrar" className="rounded-lg bg-mel-500 px-3 py-2 text-tinta-900 hover:bg-mel-400 sm:px-4">
                   Criar conta
                 </Link>
               </>
@@ -70,11 +85,25 @@ export function LayoutPublico() {
         </div>
       </header>
       <main className="flex-1">
-        <Outlet />
+        {contido ? (
+          <div className="mx-auto w-full max-w-6xl px-4 py-8">
+            <Outlet />
+          </div>
+        ) : (
+          <Outlet />
+        )}
       </main>
       <Rodape />
     </div>
   )
+}
+
+/** Páginas abertas ao público que também fazem parte da área logada (as fichas das
+ *  espécies): quem está logado vê com o menu do sistema; visitantes, com o do site. */
+export function LayoutConformeSessao() {
+  const { usuario, carregando } = useAuth()
+  if (carregando) return <Carregando />
+  return usuario ? <LayoutApp /> : <LayoutPublico contido />
 }
 
 /** Área logada. Quem não estiver logado vai para a tela de entrar. */
@@ -91,13 +120,9 @@ export function LayoutApp() {
     { para: '/coletas', texto: 'Coletas' },
     { para: '/identificar', texto: 'Identificar' },
     { para: '/mapa', texto: 'Mapa' },
+    { para: '/especies', texto: 'Espécies' },
     { para: '/conta', texto: 'Minha conta' },
-    ...(usuario.perfil === 'admin'
-      ? [
-          { para: '/admin/usuarios', texto: 'Usuários' },
-          { para: '/admin/especies', texto: 'Espécies' },
-        ]
-      : []),
+    ...(usuario.perfil === 'admin' ? [{ para: '/admin', texto: 'Administração' }] : []),
   ]
 
   const estiloLink = ({ isActive }: { isActive: boolean }) =>
@@ -112,14 +137,14 @@ export function LayoutApp() {
           <Link to="/painel" aria-label="Painel">
             <Logo />
           </Link>
-          <nav className="hidden items-center gap-1 md:flex">
+          <nav className="hidden items-center gap-1 lg:flex">
             {links.map((l) => (
               <NavLink key={l.para} to={l.para} className={estiloLink}>
                 {l.texto}
               </NavLink>
             ))}
           </nav>
-          <div className="hidden items-center gap-3 md:flex">
+          <div className="hidden items-center gap-3 lg:flex">
             <div className="text-right leading-tight">
               <p className="text-sm font-semibold text-tinta-800">{usuario.nome}</p>
               <p className="text-xs text-tinta-500">{NOMES_PERFIL[usuario.perfil]}</p>
@@ -129,7 +154,7 @@ export function LayoutApp() {
             </button>
           </div>
           <button
-            className="rounded-lg p-2 text-tinta-800 hover:bg-tinta-50 md:hidden"
+            className="rounded-lg p-2 text-tinta-800 hover:bg-tinta-50 lg:hidden"
             onClick={() => setMenuAberto((v) => !v)}
             aria-expanded={menuAberto}
             aria-label="Abrir menu"
@@ -140,7 +165,7 @@ export function LayoutApp() {
           </button>
         </div>
         {menuAberto && (
-          <nav className="space-y-1 border-t border-tinta-100 px-4 py-3 md:hidden" onClick={() => setMenuAberto(false)}>
+          <nav className="space-y-1 border-t border-tinta-100 px-4 py-3 lg:hidden" onClick={() => setMenuAberto(false)}>
             <p className="px-3 pb-2 text-sm text-tinta-500">
               {usuario.nome} · {NOMES_PERFIL[usuario.perfil]}
             </p>
@@ -163,11 +188,35 @@ export function LayoutApp() {
   )
 }
 
-/** Rotas só para administradores */
+/** Rotas só para administradores, com as abas da administração */
 export function SomenteAdmin() {
   const { usuario } = useAuth()
   if (usuario?.perfil !== 'admin') return <Navigate to="/painel" replace />
-  return <Outlet />
+  const abas = [
+    { para: '/admin/usuarios', texto: 'Usuários' },
+    { para: '/admin/especies', texto: 'Espécies e fichas' },
+    { para: '/admin/mensagens', texto: 'Mensagens' },
+  ]
+  return (
+    <div className="space-y-6">
+      <nav aria-label="Administração" className="flex gap-1 overflow-x-auto border-b border-tinta-100">
+        {abas.map((a) => (
+          <NavLink
+            key={a.para}
+            to={a.para}
+            className={({ isActive }) =>
+              `-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm font-semibold ${
+                isActive ? 'border-mel-500 text-tinta-900' : 'border-transparent text-tinta-500 hover:text-tinta-800'
+              }`
+            }
+          >
+            {a.texto}
+          </NavLink>
+        ))}
+      </nav>
+      <Outlet />
+    </div>
+  )
 }
 
 /** Telas de entrar/cadastrar: quem já está logado vai direto para o painel */

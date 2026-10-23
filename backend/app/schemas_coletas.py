@@ -330,6 +330,8 @@ class ResumoColeta(BaseModel):
     identificadas: int
     nao_identificadas: int
     revisadas: int
+    para_revisar: int  # confiança baixa e sem revisão
+    limite_confianca_revisao: float
     especies: list[EspecieNoResumo]
 
 
@@ -339,6 +341,8 @@ class EspecieOut(BaseModel):
     sensivel: bool
     raio_ofuscacao_km: float
     reconhecida_pelo_modelo: bool
+    # Situação da ficha da espécie: None = ainda não tem ficha
+    ficha: Literal["publicada", "rascunho"] | None = None
 
 
 # --- Mapa (etapa 4) ------------------------------------------------------------

@@ -1,7 +1,7 @@
 /** Página da coleta: dados, envio de fotos, andamento e fotos. */
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Alerta, Botao, Carregando } from '../../components/ui'
 import { api, mensagemErro, urlArquivo } from '../../lib/api'
 import { BIOMAS, dataBR, type Coleta, type Contagem, type Foto, type Pagina, type ResumoColeta } from '../../lib/coletas'
@@ -87,7 +87,11 @@ export default function DetalheColeta() {
     refetchInterval: (q) => (q.state.data && q.state.data.na_fila + q.state.data.processando > 0 ? 2000 : false),
   })
 
-  const [filtro, setFiltro] = useState<Filtro>({ tipo: 'todas' })
+  // O painel pode abrir a coleta já filtrada (?filtro=para_revisar)
+  const [busca] = useSearchParams()
+  const [filtro, setFiltro] = useState<Filtro>(
+    busca.get('filtro') === 'para_revisar' ? { tipo: 'para_revisar' } : { tipo: 'todas' },
+  )
   const params = new URLSearchParams({ por_pagina: '500', ...parametrosFiltro(filtro) })
   const fotos = useQuery({
     queryKey: ['fotos', id, params.toString()],

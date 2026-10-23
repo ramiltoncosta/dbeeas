@@ -16,12 +16,15 @@ from app.routers import (
     arquivos,
     auth,
     coletas,
+    contato,
     especies,
     eu,
     exportacoes,
+    fichas,
     fotos,
     identificar,
     mapa,
+    painel,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -30,7 +33,7 @@ app = FastAPI(
     title="DBeeAS",
     description="Sistema inteligente de reconhecimento de abelhas pela asa. "
     "API usada pelo site e pelo aplicativo.",
-    version="0.6.0",
+    version="0.7.0",
 )
 
 app.state.limiter = limiter
@@ -55,6 +58,11 @@ for r in (
     identificar.router,
     arquivos.router,
     admin.router,
+    painel.router,
+    fichas.publico,
+    fichas.admin,
+    contato.publico,
+    contato.admin,
 ):
     app.include_router(r, prefix="/v1")
 

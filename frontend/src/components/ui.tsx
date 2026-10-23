@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react'
+import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
 import { useId } from 'react'
 
 export function Logo({ claro = false }: { claro?: boolean }) {
@@ -33,6 +33,25 @@ export function Campo({ rotulo, dica, className = '', ...props }: CampoProps) {
       <input
         id={id}
         className="w-full rounded-lg border border-tinta-100 bg-white px-3 py-2.5 text-base text-tinta-900 shadow-sm placeholder:text-tinta-300 focus:border-mel-500 focus:outline-none focus:ring-2 focus:ring-mel-200 disabled:bg-tinta-50"
+        {...props}
+      />
+      {dica && <p className="mt-1 text-xs text-tinta-500">{dica}</p>}
+    </div>
+  )
+}
+
+type AreaTextoProps = TextareaHTMLAttributes<HTMLTextAreaElement> & { rotulo: string; dica?: ReactNode }
+
+export function AreaTexto({ rotulo, dica, className = '', ...props }: AreaTextoProps) {
+  const id = useId()
+  return (
+    <div className={className}>
+      <label htmlFor={id} className="mb-1 block text-sm font-medium text-tinta-800">
+        {rotulo}
+      </label>
+      <textarea
+        id={id}
+        className="w-full rounded-lg border border-tinta-100 bg-white px-3 py-2.5 text-base leading-relaxed text-tinta-900 shadow-sm placeholder:text-tinta-300 focus:border-mel-500 focus:outline-none focus:ring-2 focus:ring-mel-200"
         {...props}
       />
       {dica && <p className="mt-1 text-xs text-tinta-500">{dica}</p>}

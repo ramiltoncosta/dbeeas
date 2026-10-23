@@ -57,8 +57,9 @@ def limpar_tabelas(banco):
     with engine.begin() as c:
         c.execute(
             text(
-                "TRUNCATE exportacoes, revisoes, identificacoes, fotos, coletas, modelos, "
-                "especies, tokens, usuarios RESTART IDENTITY CASCADE"
+                "TRUNCATE mensagens_contato, fichas_especies, exportacoes, revisoes, "
+                "identificacoes, fotos, coletas, modelos, especies, tokens, usuarios "
+                "RESTART IDENTITY CASCADE"
             )
         )
 

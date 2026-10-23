@@ -1,29 +1,6 @@
-/** Páginas públicas. A página inicial completa será feita na etapa 6. */
+/** Páginas públicas de texto: termos, privacidade e página não encontrada. */
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-
-export function Inicio() {
-  return (
-    <section className="mx-auto max-w-6xl px-4 py-16 sm:py-24">
-      <p className="text-sm font-semibold uppercase tracking-widest text-mel-700">Identificação de abelhas pela asa</p>
-      <h1 className="mt-3 max-w-3xl text-4xl font-bold leading-tight text-tinta-900 sm:text-5xl">
-        Envie a foto da asa. O DBeeAS identifica a espécie.
-      </h1>
-      <p className="mt-5 max-w-2xl text-lg text-tinta-500">
-        Um sistema de inteligência artificial para pesquisadores, órgãos públicos e estudantes identificarem
-        abelhas, organizarem coletas e acompanharem onde cada espécie é encontrada.
-      </p>
-      <div className="mt-8 flex flex-wrap gap-3">
-        <Link to="/cadastrar" className="rounded-lg bg-mel-500 px-5 py-3 font-semibold text-tinta-900 hover:bg-mel-400">
-          Criar conta
-        </Link>
-        <Link to="/entrar" className="rounded-lg border border-tinta-100 bg-white px-5 py-3 font-semibold text-tinta-800 hover:bg-tinta-50">
-          Já tenho conta
-        </Link>
-      </div>
-    </section>
-  )
-}
 
 function Documento({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
