@@ -3,6 +3,7 @@
 import hashlib
 import logging
 import uuid
+from typing import Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import case, func, select
@@ -15,20 +16,41 @@ from app.deps import usuario_atual
 from app.fila import enfileirar_fotos
 from app.geo import ponto
 from app.imagens import ImagemInvalida, analisar
-from app.models import Coleta, Foto, Identificacao, OrigemLocal, Perfil, StatusFoto, Usuario
+from app.models import (
+    Coleta,
+    Especie,
+    Foto,
+    Identificacao,
+    OrigemLocal,
+    Perfil,
+    Revisao,
+    StatusFoto,
+    Usuario,
+)
 from app.schemas_coletas import (
     ColetaAtualizar,
     ColetaIn,
     ColetaOut,
     Contagem,
     EnvioOut,
+    EspecieNoResumo,
     FotoOut,
     PaginaColetas,
     PaginaFotos,
     Rejeitada,
+    ResumoColeta,
 )
 
 log = logging.getLogger("dbeeas.coletas")
+
+# Carrega junto tudo o que a resposta de uma foto precisa (evita uma consulta por foto)
+CARREGAR_FOTO = (
+    selectinload(Foto.identificacoes).selectinload(Identificacao.especie),
+    selectinload(Foto.identificacoes).selectinload(Identificacao.modelo),
+    selectinload(Foto.especie),
+    selectinload(Foto.revisoes).selectinload(Revisao.especie),
+    selectinload(Foto.revisoes).selectinload(Revisao.usuario),
+)
 router = APIRouter(prefix="/coletas", tags=["Coletas"])
 
 
@@ -41,20 +63,9 @@ def obter_coleta(db: Session, coleta_id: uuid.UUID, usuario: Usuario) -> Coleta:
     return coleta
 
 
-def _ultima_identificacao():
-    """Subconsulta: a identificação mais recente de cada foto."""
-    return (
-        select(Identificacao.foto_id, Identificacao.identificada)
-        .distinct(Identificacao.foto_id)
-        .order_by(Identificacao.foto_id, Identificacao.criado_em.desc())
-        .subquery()
-    )
-
-
 def contar_fotos(db: Session, coleta_ids: list[uuid.UUID]) -> dict[uuid.UUID, Contagem]:
     if not coleta_ids:
         return {}
-    ident = _ultima_identificacao()
 
     def soma(cond):
         return func.sum(case((cond, 1), else_=0))
@@ -68,10 +79,9 @@ def contar_fotos(db: Session, coleta_ids: list[uuid.UUID]) -> dict[uuid.UUID, Co
             soma(Foto.status == StatusFoto.processando),
             soma(concluida),
             soma(Foto.status == StatusFoto.erro),
-            soma(concluida & ident.c.identificada.is_(True)),
-            soma(concluida & ident.c.identificada.is_not(True)),
+            soma(concluida & Foto.especie_id.is_not(None)),
+            soma(concluida & Foto.especie_id.is_(None)),
         )
-        .outerjoin(ident, ident.c.foto_id == Foto.id)
         .where(Foto.coleta_id.in_(coleta_ids))
         .group_by(Foto.coleta_id)
     ).all()
@@ -284,7 +294,7 @@ def enviar_fotos(
     fotos = db.scalars(
         select(Foto)
         .where(Foto.id.in_([f.id for f in aceitas]))
-        .options(selectinload(Foto.identificacoes))
+        .options(*CARREGAR_FOTO)
         .execution_options(populate_existing=True)
     ).all()
     por_id = {f.id: f for f in fotos}
@@ -298,8 +308,12 @@ def enviar_fotos(
 def listar_fotos(
     coleta_id: uuid.UUID,
     status_foto: StatusFoto | None = Query(None, alias="status"),
+    especie_id: int | None = Query(None, description="Só as fotos desta espécie (espécie final)"),
+    grupo: Literal["nao_identificadas", "pendentes", "revisadas"] | None = Query(
+        None, description="nao_identificadas, pendentes (na fila ou processando) ou revisadas"
+    ),
     pagina: int = Query(1, ge=1),
-    por_pagina: int = Query(60, ge=1, le=200),
+    por_pagina: int = Query(60, ge=1, le=500),
     usuario: Usuario = Depends(usuario_atual),
     db: Session = Depends(get_db),
 ):
@@ -307,18 +321,85 @@ def listar_fotos(
     filtros = [Foto.coleta_id == coleta.id]
     if status_foto:
         filtros.append(Foto.status == status_foto)
+    if especie_id is not None:
+        filtros.append(Foto.especie_id == especie_id)
+    if grupo == "nao_identificadas":
+        filtros += [Foto.status == StatusFoto.concluida, Foto.especie_id.is_(None)]
+    elif grupo == "pendentes":
+        filtros.append(Foto.status.in_([StatusFoto.na_fila, StatusFoto.processando]))
+    elif grupo == "revisadas":
+        filtros.append(Foto.revisada.is_(True))
     total = db.scalar(select(func.count()).select_from(Foto).where(*filtros))
     fotos = db.scalars(
         select(Foto)
         .where(*filtros)
-        .options(
-            selectinload(Foto.identificacoes).selectinload(Identificacao.especie),
-            selectinload(Foto.identificacoes).selectinload(Identificacao.modelo),
-        )
+        .options(*CARREGAR_FOTO)
         .order_by(Foto.enviada_em, Foto.nome_original)
         .offset((pagina - 1) * por_pagina)
         .limit(por_pagina)
     ).all()
     return PaginaFotos(
         itens=[FotoOut.de(f) for f in fotos], total=total, pagina=pagina, por_pagina=por_pagina
+    )
+
+
+@router.get("/{coleta_id}/resumo", response_model=ResumoColeta)
+def resumo(
+    coleta_id: uuid.UUID, usuario: Usuario = Depends(usuario_atual), db: Session = Depends(get_db)
+):
+    """Quantas fotos de cada espécie e a porcentagem de cada uma.
+
+    As porcentagens são calculadas só sobre as fotos identificadas: as não identificadas
+    aparecem separadas, para não distorcer a proporção entre as espécies.
+    """
+    coleta = obter_coleta(db, coleta_id, usuario)
+    c = contar_fotos(db, [coleta.id]).get(coleta.id, Contagem())
+
+    ident = (
+        select(Identificacao.foto_id, Identificacao.especie_id, Identificacao.confianca)
+        .distinct(Identificacao.foto_id)
+        .order_by(Identificacao.foto_id, Identificacao.criado_em.desc())
+        .subquery()
+    )
+    # Confiança média do modelo só nas fotos em que o modelo indicou a mesma espécie final
+    conf_mesma = case((ident.c.especie_id == Foto.especie_id, ident.c.confianca))
+    linhas = db.execute(
+        select(
+            Especie.id,
+            Especie.nome_cientifico,
+            func.count(Foto.id),
+            func.sum(case((Foto.revisada, 1), else_=0)),
+            func.avg(conf_mesma),
+        )
+        .join(Especie, Especie.id == Foto.especie_id)
+        .outerjoin(ident, ident.c.foto_id == Foto.id)
+        .where(Foto.coleta_id == coleta.id, Foto.status == StatusFoto.concluida)
+        .group_by(Especie.id, Especie.nome_cientifico)
+        .order_by(func.count(Foto.id).desc(), Especie.nome_cientifico)
+    ).all()
+
+    revisadas = db.scalar(
+        select(func.count())
+        .select_from(Foto)
+        .where(Foto.coleta_id == coleta.id, Foto.revisada.is_(True))
+    )
+    return ResumoColeta(
+        total=c.total,
+        concluidas=c.concluidas,
+        pendentes=c.na_fila + c.processando,
+        erro=c.erro,
+        identificadas=c.identificadas,
+        nao_identificadas=c.nao_identificadas,
+        revisadas=revisadas,
+        especies=[
+            EspecieNoResumo(
+                id=eid,
+                nome=nome,
+                quantidade=qtd,
+                porcentagem=round(qtd / c.identificadas * 100, 1) if c.identificadas else 0,
+                revisadas=rev or 0,
+                confianca_media=round(float(conf), 4) if conf is not None else None,
+            )
+            for eid, nome, qtd, rev, conf in linhas
+        ],
     )
