@@ -161,9 +161,7 @@ class Coleta(Base):
     bioma: Mapped[Bioma | None] = mapped_column(_enum(Bioma, "bioma"))
     observacoes: Mapped[str | None] = mapped_column(Text)
     # Ponto geral da coleta. Fotos sem localização própria usam este ponto.
-    local: Mapped[Any | None] = mapped_column(
-        Geography("POINT", srid=4326, spatial_index=False)
-    )
+    local: Mapped[Any | None] = mapped_column(Geography("POINT", srid=4326, spatial_index=False))
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     atualizado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
