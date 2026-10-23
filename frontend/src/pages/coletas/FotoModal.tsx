@@ -74,6 +74,7 @@ export default function FotoModal({ foto: inicial, localColeta, aoFechar }: Prop
     cliente.invalidateQueries({ queryKey: ['fotos', foto.coleta_id] })
     cliente.invalidateQueries({ queryKey: ['progresso', foto.coleta_id] })
     cliente.invalidateQueries({ queryKey: ['resumo', foto.coleta_id] })
+    cliente.invalidateQueries({ queryKey: ['mapa'] })
     cliente.invalidateQueries({ queryKey: ['coletas'] })
   }
   const aoAtualizar = (f: Foto) => {
