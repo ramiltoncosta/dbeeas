@@ -6,6 +6,8 @@
 #   E-mails de teste .... http://localhost:8025
 #   Detector (direto) ... http://localhost:8001/docs
 #
+#   Ver a fila trabalhando: docker compose logs -f worker
+#
 # ":Z" nos volumes é necessário no Fedora por causa do SELinux.
 
 services:
@@ -21,6 +23,10 @@ services:
       test: ["CMD-SHELL", "pg_isready -U dbeeas"]
       interval: 5s
       retries: 10
+
+  # Fila de processamento das fotos
+  redis:
+    image: redis:7-alpine
 
   # Captura os e-mails do sistema (nada é enviado de verdade)
   mailpit:
@@ -48,8 +54,11 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app:Z # o código muda sem precisar reconstruir
-    environment:
+      - arquivos:/data/arquivos
+    environment: &ambiente-backend
       DATABASE_URL: postgresql+psycopg://dbeeas:dbeeas@db:5432/dbeeas
+      REDIS_URL: redis://redis:6379/0
+      DETECTOR_URL: http://detector:8000
       FRONTEND_URL: http://localhost:5173
       CORS_ORIGENS: http://localhost:5173
       SMTP_HOST: mailpit
@@ -59,6 +68,23 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
+
+  # Worker: pega as fotos da fila, gera miniaturas e chama o detector
+  worker:
+    build:
+      context: ./backend
+      args:
+        DEV: "true"
+    volumes:
+      - ./backend:/app:Z
+      - arquivos:/data/arquivos
+    environment: *ambiente-backend
+    command: rq worker --url redis://redis:6379/0 --with-scheduler fotos
+    depends_on:
+      backend:
+        condition: service_started
 
   frontend:
     image: node:22-alpine
@@ -74,3 +100,4 @@ services:
 
 volumes:
   dbdata:
+  arquivos: # fotos e miniaturas
