@@ -97,7 +97,9 @@ def test_validacoes_da_coleta(client, token):
     amanha = (datetime.now() + timedelta(days=2)).date().isoformat()
     r = client.post("/v1/coletas", json={"nome": "x", "data_coleta": amanha}, headers=h)
     assert r.status_code == 422
-    r = client.post("/v1/coletas", json={"nome": "x", "local": {"latitude": 99, "longitude": 0}}, headers=h)
+    r = client.post(
+        "/v1/coletas", json={"nome": "x", "local": {"latitude": 99, "longitude": 0}}, headers=h
+    )
     assert r.status_code == 422
 
 
