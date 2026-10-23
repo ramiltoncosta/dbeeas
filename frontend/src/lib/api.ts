@@ -53,6 +53,20 @@ let tokenAcesso: string | null = null
 let renovando: Promise<Sessao | null> | null = null
 let aoEncerrarSessao: (() => void) | null = null
 
+export function obterToken() {
+  return tokenAcesso
+}
+
+/** Endereço completo de um arquivo (os links das imagens vêm da API como "/v1/arquivos/..."). */
+export function urlArquivo(caminho: string | null | undefined) {
+  return caminho ? `${API_URL}${caminho}` : undefined
+}
+
+/** Mensagem de erro amigável a partir de qualquer erro. */
+export function mensagemErro(e: unknown) {
+  return e instanceof ErroApi ? e.message : 'Algo deu errado. Tente novamente.'
+}
+
 export function definirToken(token: string | null) {
   tokenAcesso = token
 }
