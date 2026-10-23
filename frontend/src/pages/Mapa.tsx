@@ -1,5 +1,5 @@
 /**
- * Mapa de ocorrências: onde cada espécie foi encontrada.
+ * Página do mapa de ocorrências (filtros, legenda e o mapa).
  *
  * - Pontos próximos são agrupados (número no círculo) e se separam ao aproximar o zoom.
  * - Cores: até 3 espécies ganham cor própria; as demais ficam em cinza ("outras espécies").
@@ -8,163 +8,14 @@
  * - Espécies sensíveis aparecem com localização aproximada (círculo tracejado) para quem
  *   não tem permissão de ver o ponto exato.
  */
-import 'leaflet/dist/leaflet.css'
 import { useQuery } from '@tanstack/react-query'
-import L from 'leaflet'
-import { useEffect, useMemo, useState } from 'react'
-import { Circle, CircleMarker, MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet'
-import { Link, useSearchParams } from 'react-router-dom'
-import Supercluster from 'supercluster'
+import { useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import MapaOcorrencias from '../components/MapaOcorrencias'
 import { Alerta, Campo, Selecao } from '../components/ui'
-import { api, mensagemErro, urlArquivo } from '../lib/api'
-import { dataBR, type Coleta, type Especie, type Pagina } from '../lib/coletas'
-
-interface Propriedades {
-  especie_id: number
-  especie: string
-  data: string | null
-  revisada: boolean
-  aproximada: boolean
-  raio_km: number | null
-  minha: boolean
-  foto_id?: string
-  coleta_id?: string
-  coleta?: string
-  url_miniatura?: string | null
-}
-
-type Ocorrencia = GeoJSON.Feature<GeoJSON.Point, Propriedades>
-
-// Paleta categórica validada (3 primeiras cores: distinguíveis entre si também com daltonismo)
-const CORES = ['#2a78d6', '#eb6834', '#1baf7a']
-const COR_OUTRAS = '#8a8f98'
-const CENTRO_BRASIL: [number, number] = [-14.2, -51.9]
-
-function coresPorEspecie(ocorrencias: Ocorrencia[]) {
-  const contagem = new Map<number, { nome: string; n: number }>()
-  for (const o of ocorrencias) {
-    const atual = contagem.get(o.properties.especie_id)
-    contagem.set(o.properties.especie_id, { nome: o.properties.especie, n: (atual?.n ?? 0) + 1 })
-  }
-  const lista = [...contagem.entries()].map(([id, v]) => ({ id, ...v }))
-  // Com até 3 espécies, a cor segue a espécie (ordem alfabética), não a quantidade
-  const ordenada =
-    lista.length <= CORES.length
-      ? lista.sort((a, b) => a.nome.localeCompare(b.nome))
-      : lista.sort((a, b) => b.n - a.n || a.nome.localeCompare(b.nome))
-  const cor = new Map<number, string>()
-  ordenada.forEach((e, i) => cor.set(e.id, CORES[i] ?? COR_OUTRAS))
-  return { cor, legenda: ordenada.map((e) => ({ ...e, cor: cor.get(e.id)! })) }
-}
-
-function AjustarZoom({ ocorrencias }: { ocorrencias: Ocorrencia[] }) {
-  const mapa = useMap()
-  useEffect(() => {
-    if (!ocorrencias.length) return
-    const limites = L.latLngBounds(ocorrencias.map((o) => [o.geometry.coordinates[1], o.geometry.coordinates[0]]))
-    mapa.whenReady(() => {
-      mapa.invalidateSize() // garante que o mapa sabe o próprio tamanho antes de enquadrar
-      mapa.fitBounds(limites, { padding: [40, 40], maxZoom: 13, animate: false })
-    })
-  }, [ocorrencias, mapa])
-  return null
-}
-
-function Pontos({ ocorrencias, cor }: { ocorrencias: Ocorrencia[]; cor: Map<number, string> }) {
-  const mapa = useMap()
-  // Redesenha quando o mapa muda; o zoom e a área visível são lidos direto do mapa
-  const [, setVersao] = useState(0)
-  const redesenhar = () => setVersao((v) => v + 1)
-  useMapEvents({ moveend: redesenhar, zoomend: redesenhar, resize: redesenhar })
-
-  const indice = useMemo(() => {
-    const s = new Supercluster<Propriedades>({ radius: 50, maxZoom: 16 })
-    s.load(ocorrencias)
-    return s
-  }, [ocorrencias])
-
-  const b = mapa.getBounds()
-  const itens = indice.getClusters([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], Math.round(mapa.getZoom()))
-
-  return (
-    <>
-      {itens.map((item) => {
-        const [lon, lat] = item.geometry.coordinates
-        if ('cluster' in item.properties && item.properties.cluster) {
-          const grupo = item.properties as Supercluster.ClusterProperties
-          const n = grupo.point_count
-          const tamanho = n < 10 ? 34 : n < 100 ? 42 : 50
-          return (
-            <Marker
-              key={`c${grupo.cluster_id}`}
-              position={[lat, lon]}
-              icon={L.divIcon({
-                html: `<span>${n}</span>`,
-                className: 'dbeeas-cluster',
-                iconSize: [tamanho, tamanho],
-              })}
-              eventHandlers={{
-                click: () =>
-                  mapa.flyTo([lat, lon], Math.min(indice.getClusterExpansionZoom(grupo.cluster_id), 18)),
-              }}
-              title={`${n} ocorrências — clique para aproximar`}
-            />
-          )
-        }
-        const p = item.properties as Propriedades
-        const c = cor.get(p.especie_id) ?? COR_OUTRAS
-        return (
-          <PontoOcorrencia key={`${p.foto_id ?? ''}${lat}${lon}${p.especie_id}${p.data}`} lat={lat} lon={lon} p={p} cor={c} />
-        )
-      })}
-    </>
-  )
-}
-
-function PontoOcorrencia({ lat, lon, p, cor }: { lat: number; lon: number; p: Propriedades; cor: string }) {
-  const popup = (
-    <Popup>
-      <div className="min-w-44 space-y-1 text-sm">
-        {p.url_miniatura && <img src={urlArquivo(p.url_miniatura)} alt="" className="mb-2 w-full rounded" />}
-        <p className="font-semibold italic">{p.especie}</p>
-        <p>{p.data ? dataBR(p.data) : 'Data não informada'}</p>
-        {p.revisada && <p className="text-xs">✓ Revisada por uma pessoa</p>}
-        {p.aproximada && (
-          <p className="text-xs">Espécie sensível: localização aproximada (área de cerca de {p.raio_km} km).</p>
-        )}
-        {p.coleta && p.coleta_id && (
-          <p>
-            <Link to={`/coletas/${p.coleta_id}`} className="font-semibold underline">
-              {p.coleta}
-            </Link>
-          </p>
-        )}
-        {!p.minha && !p.coleta && <p className="text-xs">Registro de outra pessoa.</p>}
-      </div>
-    </Popup>
-  )
-  if (p.aproximada && p.raio_km) {
-    return (
-      <Circle
-        center={[lat, lon]}
-        radius={(p.raio_km * 1000) / 2}
-        pathOptions={{ color: cor, weight: 2, dashArray: '6 6', fillColor: cor, fillOpacity: 0.12 }}
-      >
-        {popup}
-      </Circle>
-    )
-  }
-  return (
-    <CircleMarker
-      center={[lat, lon]}
-      radius={7}
-      // Anel branco separa pontos sobrepostos
-      pathOptions={{ color: '#ffffff', weight: 2, fillColor: cor, fillOpacity: 1 }}
-    >
-      {popup}
-    </CircleMarker>
-  )
-}
+import { api, mensagemErro } from '../lib/api'
+import { type Coleta, type Especie, type Pagina } from '../lib/coletas'
+import { COR_OUTRAS, coresPorEspecie, type Ocorrencia, type Propriedades } from '../lib/mapa'
 
 export default function Mapa() {
   const [params, setParams] = useSearchParams()
@@ -258,15 +109,7 @@ export default function Mapa() {
 
       <div className="grid gap-4 lg:grid-cols-[1fr_18rem]">
         <div className="relative h-[65vh] min-h-96 overflow-hidden rounded-2xl border border-tinta-100">
-          <MapContainer center={CENTRO_BRASIL} zoom={4} className="h-full w-full" scrollWheelZoom>
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            {/* Pontos antes de AjustarZoom: assim já está ouvindo o mapa quando o zoom muda */}
-            <Pontos ocorrencias={ocorrencias} cor={cor} />
-            <AjustarZoom ocorrencias={ocorrencias} />
-          </MapContainer>
+          <MapaOcorrencias ocorrencias={ocorrencias} cor={cor} className="h-full w-full" />
           {dados.isFetching && (
             <div className="absolute right-3 top-3 z-[500] rounded-full bg-white px-3 py-1 text-xs font-semibold text-tinta-700 shadow">
               Carregando…
