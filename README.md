@@ -150,7 +150,7 @@ Plano completo em [docs/prompt-webapp.md](docs/prompt-webapp.md) e decisões em
 
 - [x] Etapa 1 – Banco de dados, autenticação e perfis
 - [x] Etapa 2 – Coletas e envio de fotos com fila de processamento
-- [ ] Etapa 3 – Resultado da coleta: agrupamento, gráfico e correção manual
+- [x] Etapa 3 – Resultado da coleta: agrupamento, gráfico e correção manual
 - [ ] Etapa 4 – Mapa
 - [ ] Etapa 5 – Exportação ZIP com CSV Darwin Core
 - [ ] Etapa 6 – Painel, fichas das espécies e página pública

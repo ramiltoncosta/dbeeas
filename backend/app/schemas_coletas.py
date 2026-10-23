@@ -1,13 +1,25 @@
 """Formatos de entrada e saída de coletas e fotos."""
 
+import re
 import uuid
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
 from app.armazenamento import url_assinada
 from app.geo import lat_lon
-from app.models import Bioma, Coleta, Foto, OrigemLocal, Sexo, StatusFoto
+from app.models import (
+    AcaoRevisao,
+    Bioma,
+    Coleta,
+    Foto,
+    OrigemEspecie,
+    OrigemLocal,
+    Perfil,
+    Sexo,
+    StatusFoto,
+)
 
 UFS = {
     "AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA",
@@ -141,6 +153,15 @@ class IdentificacaoOut(BaseModel):
     criado_em: datetime
 
 
+class RevisaoOut(BaseModel):
+    acao: AcaoRevisao
+    especie: str | None
+    observacao: str | None
+    revisor: str | None
+    perfil_revisor: Perfil
+    criado_em: datetime
+
+
 class FotoOut(BaseModel):
     id: uuid.UUID
     coleta_id: uuid.UUID
@@ -161,6 +182,11 @@ class FotoOut(BaseModel):
     url_media: str | None
     url_original: str | None
     identificacao: IdentificacaoOut | None
+    # Espécie final: a revisão mais recente, se houver; senão, o modelo
+    especie: str | None
+    origem_especie: OrigemEspecie | None
+    revisada: bool
+    revisao: RevisaoOut | None
 
     @classmethod
     def de(cls, f: Foto) -> "FotoOut":
@@ -195,6 +221,19 @@ class FotoOut(BaseModel):
             )
             if ident
             else None,
+            especie=f.especie.nome_cientifico if f.especie else None,
+            origem_especie=f.origem_especie,
+            revisada=f.revisada,
+            revisao=RevisaoOut(
+                acao=rev.acao,
+                especie=rev.especie.nome_cientifico if rev.especie else None,
+                observacao=rev.observacao,
+                revisor=rev.usuario.nome if rev.usuario else None,
+                perfil_revisor=rev.perfil_revisor,
+                criado_em=rev.criado_em,
+            )
+            if (rev := f.revisao)
+            else None,
         )
 
 
@@ -227,3 +266,72 @@ class PaginaColetas(BaseModel):
     total: int
     pagina: int
     por_pagina: int
+
+
+# --- Revisões, resumo e espécies (etapa 3) ----------------------------------
+
+# "Euglossa cognata", "Euglossa sp.", "Eulaema (Apeulaema) nigrita", "Euglossa aff. cognata"
+_NOME_CIENTIFICO = re.compile(
+    r"^[A-Z][a-z]+( \([A-Z][a-z]+\))?( (aff\.|cf\.))? ([a-z][a-z-]+|sp\.)( [a-z][a-z-]+)?$"
+)
+
+
+class RevisaoIn(BaseModel):
+    """Revisão de uma pessoa sobre o resultado da foto.
+
+    - confirmar: a espécie atual está certa
+    - corrigir: informe a espécie certa em "especie" (nome científico)
+    - nao_identificavel: não dá para identificar por esta foto
+    - restaurar: desfaz as revisões e volta a valer o resultado do modelo
+    """
+
+    acao: Literal["confirmar", "corrigir", "nao_identificavel", "restaurar"]
+    especie: str | None = Field(default=None, max_length=200)
+    observacao: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("especie", "observacao", mode="before")
+    @classmethod
+    def _limpar(cls, v):
+        if isinstance(v, str):
+            v = " ".join(v.split())
+            return v or None
+        return v
+
+    @field_validator("especie")
+    @classmethod
+    def _nome(cls, v):
+        if v is not None and not _NOME_CIENTIFICO.match(v):
+            raise ValueError(
+                "Use o nome científico: gênero com inicial maiúscula e espécie em minúsculas "
+                "(ex.: Euglossa cognata, ou Euglossa sp. quando a espécie é desconhecida)"
+            )
+        return v
+
+
+class EspecieNoResumo(BaseModel):
+    id: int
+    nome: str
+    quantidade: int
+    porcentagem: float  # sobre as fotos identificadas (não identificadas ficam de fora)
+    revisadas: int
+    confianca_media: (
+        float | None
+    )  # média do modelo nas fotos em que ele acertou/indicou esta espécie
+
+
+class ResumoColeta(BaseModel):
+    total: int
+    concluidas: int
+    pendentes: int
+    erro: int
+    identificadas: int
+    nao_identificadas: int
+    revisadas: int
+    especies: list[EspecieNoResumo]
+
+
+class EspecieOut(BaseModel):
+    id: int
+    nome_cientifico: str
+    sensivel: bool
+    reconhecida_pelo_modelo: bool

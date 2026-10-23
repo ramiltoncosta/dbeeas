@@ -192,6 +192,11 @@ class Sexo(enum.StrEnum):
     indeterminado = "indeterminado"
 
 
+class OrigemEspecie(enum.StrEnum):
+    modelo = "modelo"  # resultado do modelo
+    revisao = "revisao"  # confirmada ou corrigida por uma pessoa
+
+
 class Foto(Base):
     __tablename__ = "fotos"
 
@@ -228,7 +233,22 @@ class Foto(Base):
     enviada_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     processada_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    # Espécie final da foto: a da revisão mais recente, se houver; senão, a do modelo.
+    # Fica guardada aqui (calculada) para o gráfico, o mapa e a exportação serem rápidos.
+    especie_id: Mapped[int | None] = mapped_column(ForeignKey("especies.id"), index=True)
+    origem_especie: Mapped[OrigemEspecie | None] = mapped_column(
+        _enum(OrigemEspecie, "origem_especie")
+    )
+    revisada: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+
     coleta: Mapped[Coleta] = relationship(back_populates="fotos")
+    especie: Mapped[Especie | None] = relationship()
+    revisoes: Mapped[list["Revisao"]] = relationship(
+        back_populates="foto",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="Revisao.criado_em.desc()",
+    )
     identificacoes: Mapped[list["Identificacao"]] = relationship(
         back_populates="foto",
         cascade="all, delete-orphan",
@@ -246,6 +266,11 @@ class Foto(Base):
     def identificacao(self) -> "Identificacao | None":
         """Resultado mais recente do modelo."""
         return self.identificacoes[0] if self.identificacoes else None
+
+    @property
+    def revisao(self) -> "Revisao | None":
+        """Revisão mais recente feita por uma pessoa."""
+        return self.revisoes[0] if self.revisoes else None
 
 
 class Identificacao(Base):
@@ -268,3 +293,39 @@ class Identificacao(Base):
     foto: Mapped[Foto] = relationship(back_populates="identificacoes")
     especie: Mapped[Especie | None] = relationship()
     modelo: Mapped[ModeloIA | None] = relationship()
+
+
+class AcaoRevisao(enum.StrEnum):
+    confirmou = "confirmou"  # a espécie do modelo está certa
+    corrigiu = "corrigiu"  # a espécie certa é outra
+    nao_identificavel = "nao_identificavel"  # não dá para identificar por esta foto
+    restaurou = "restaurou"  # desfez as revisões: volta a valer o resultado do modelo
+
+
+class Revisao(Base):
+    """Confirmações e correções feitas por pessoas. Nunca são apagadas:
+    formam o histórico e servem de dado para retreinar o modelo."""
+
+    __tablename__ = "revisoes"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    foto_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("fotos.id", ondelete="CASCADE"), index=True
+    )
+    usuario_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="SET NULL"), index=True
+    )
+    # Perfil de quem revisou, no momento da revisão (para filtrar no retreino)
+    perfil_revisor: Mapped[Perfil] = mapped_column(_enum(Perfil, "perfil"))
+    acao: Mapped[AcaoRevisao] = mapped_column(_enum(AcaoRevisao, "acao_revisao"))
+    especie_id: Mapped[int | None] = mapped_column(ForeignKey("especies.id"))
+    # O que o modelo dizia quando a revisão foi feita
+    identificacao_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("identificacoes.id", ondelete="SET NULL")
+    )
+    observacao: Mapped[str | None] = mapped_column(Text)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    foto: Mapped[Foto] = relationship(back_populates="revisoes")
+    especie: Mapped[Especie | None] = relationship()
+    usuario: Mapped[Usuario | None] = relationship()

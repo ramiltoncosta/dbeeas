@@ -1,10 +1,11 @@
-/** Detalhes de uma foto: imagem com as caixas, resultado, local e sexo. */
+/** Detalhes de uma foto: imagem com as caixas, resultado, revisão, local e sexo. */
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import SeletorLocal from '../../components/SeletorLocal'
 import { Alerta, Botao, Selecao } from '../../components/ui'
 import { api, mensagemErro, urlArquivo } from '../../lib/api'
 import { pct, SEXOS, type Foto, type Ponto, type Sexo } from '../../lib/coletas'
+import Revisao from './Revisao'
 
 export function ImagemComCaixas({ foto }: { foto: Foto }) {
   const deteccoes = foto.identificacao?.deteccoes ?? []
@@ -33,12 +34,20 @@ export function ImagemComCaixas({ foto }: { foto: Foto }) {
 }
 
 export function Selo({ foto }: { foto: Foto }) {
-  if (foto.status === 'na_fila') return <span className="rounded-full bg-tinta-50 px-2 py-0.5 text-xs font-semibold text-tinta-500">Na fila</span>
-  if (foto.status === 'processando') return <span className="rounded-full bg-mel-100 px-2 py-0.5 text-xs font-semibold text-mel-700">Processando</span>
-  if (foto.status === 'erro') return <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">Erro</span>
-  if (!foto.identificacao?.identificada)
-    return <span className="rounded-full bg-tinta-100 px-2 py-0.5 text-xs font-semibold text-tinta-700">Não identificada</span>
-  return <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800">{pct(foto.identificacao.confianca)}</span>
+  const base = 'rounded-full px-2 py-0.5 text-xs font-semibold'
+  if (foto.status === 'na_fila') return <span className={`${base} bg-tinta-50 text-tinta-500`}>Na fila</span>
+  if (foto.status === 'processando') return <span className={`${base} bg-mel-100 text-mel-700`}>Processando</span>
+  if (foto.status === 'erro') return <span className={`${base} bg-red-50 text-red-700`}>Erro</span>
+  if (foto.revisada) {
+    const r = foto.revisao?.acao
+    return (
+      <span className={`${base} bg-tinta-700 text-white`} title="Revisada por uma pessoa">
+        ✓ {r === 'corrigiu' ? 'Corrigida' : r === 'nao_identificavel' ? 'Não identificável' : 'Confirmada'}
+      </span>
+    )
+  }
+  if (!foto.especie) return <span className={`${base} bg-tinta-100 text-tinta-700`}>Não identificada</span>
+  return <span className={`${base} bg-emerald-50 text-emerald-800`}>{pct(foto.identificacao?.confianca)}</span>
 }
 
 interface Props {
@@ -47,8 +56,10 @@ interface Props {
   aoFechar: () => void
 }
 
-export default function FotoModal({ foto, localColeta, aoFechar }: Props) {
+export default function FotoModal({ foto: inicial, localColeta, aoFechar }: Props) {
   const cliente = useQueryClient()
+  // A foto mostrada é atualizada com a resposta de cada alteração
+  const [foto, setFoto] = useState(inicial)
   const [local, setLocal] = useState<Ponto | null>(foto.local)
   const [sexo, setSexo] = useState<Sexo | ''>(foto.sexo ?? '')
   const [confirmarExclusao, setConfirmarExclusao] = useState(false)
@@ -62,12 +73,17 @@ export default function FotoModal({ foto, localColeta, aoFechar }: Props) {
   const recarregar = () => {
     cliente.invalidateQueries({ queryKey: ['fotos', foto.coleta_id] })
     cliente.invalidateQueries({ queryKey: ['progresso', foto.coleta_id] })
+    cliente.invalidateQueries({ queryKey: ['resumo', foto.coleta_id] })
     cliente.invalidateQueries({ queryKey: ['coletas'] })
+  }
+  const aoAtualizar = (f: Foto) => {
+    setFoto(f)
+    recarregar()
   }
 
   const salvar = useMutation({
     mutationFn: () => api<Foto>(`/v1/fotos/${foto.id}`, { method: 'PATCH', body: { local, sexo: sexo || null } }),
-    onSuccess: recarregar,
+    onSuccess: aoAtualizar,
   })
   const reprocessar = useMutation({
     mutationFn: () => api<Foto>(`/v1/fotos/${foto.id}/reprocessar`, { method: 'POST' }),
@@ -117,18 +133,26 @@ export default function FotoModal({ foto, localColeta, aoFechar }: Props) {
 
             <section>
               <h3 className="text-xs font-semibold uppercase tracking-wide text-tinta-500">Resultado</h3>
-              {foto.status === 'concluida' && ident ? (
-                ident.identificada ? (
-                  <>
-                    <p className="mt-1 text-xl font-bold italic text-tinta-900">{ident.especie}</p>
-                    <p className="text-sm text-tinta-500">Confiança do modelo: {pct(ident.confianca)}</p>
-                  </>
-                ) : (
-                  <p className="mt-1 text-sm text-tinta-800">
-                    Não foi possível identificar com segurança
-                    {ident.deteccoes[0] && ` (mais provável: ${ident.deteccoes[0].especie}, ${pct(ident.deteccoes[0].confianca)})`}.
+              {foto.status === 'concluida' ? (
+                <>
+                  {foto.especie ? (
+                    <p className="mt-1 text-xl font-bold italic text-tinta-900">{foto.especie}</p>
+                  ) : (
+                    <p className="mt-1 text-sm text-tinta-800">
+                      {foto.revisada
+                        ? 'Marcada como não identificável.'
+                        : `Não foi possível identificar com segurança${
+                            ident?.deteccoes[0]
+                              ? ` (mais provável: ${ident.deteccoes[0].especie}, ${pct(ident.deteccoes[0].confianca)})`
+                              : ''
+                          }.`}
+                    </p>
+                  )}
+                  <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-tinta-500">
+                    <Selo foto={foto} />
+                    {!foto.revisada && ident?.identificada && <span>confiança do modelo</span>}
                   </p>
-                )
+                </>
               ) : (
                 <div className="mt-1 flex items-center gap-2"><Selo foto={foto} /></div>
               )}
@@ -142,6 +166,8 @@ export default function FotoModal({ foto, localColeta, aoFechar }: Props) {
               )}
               {ident?.versao_modelo && <p className="mt-1 text-xs text-tinta-300">Modelo {ident.versao_modelo}</p>}
             </section>
+
+            <Revisao foto={foto} aoRevisar={aoAtualizar} />
 
             <section className="space-y-2">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-tinta-500">Localização</h3>

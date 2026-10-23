@@ -38,14 +38,21 @@ Registro das decisões tomadas, para consulta futura.
 | 2026-10-23 | Fotos sem GPS herdam o ponto da coleta (não é copiado para a foto) | Corrigir o ponto da coleta corrige todas as fotos sem GPS |
 | 2026-10-23 | Fotos repetidas (mesmo conteúdo) na mesma coleta são recusadas | Evita contagens infladas no gráfico |
 | 2026-10-23 | O detector informa a versão do modelo (MODEL_VERSION ou hash do arquivo) | Cada identificação registra qual modelo foi usado |
+| 2026-10-23 | Espécie final guardada na própria foto (`fotos.especie_id`), recalculada a cada identificação ou revisão | Gráfico, filtros, mapa e exportação ficam rápidos e simples |
+| 2026-10-23 | Revisões nunca são apagadas; "desfazer" é uma nova revisão do tipo "restaurou" | Histórico completo e dados confiáveis para retreino |
+| 2026-10-23 | Cada revisão guarda o perfil de quem revisou e o que o modelo dizia naquele momento | No retreino dá para usar só correções de pesquisadores |
+| 2026-10-23 | Reprocessar uma foto com um modelo novo não desfaz a revisão de uma pessoa | A revisão humana vale mais que o modelo |
+| 2026-10-23 | Na correção, o pesquisador pode informar uma espécie que o modelo não conhece (nome científico validado) | Registra espécies novas e gera dados para ampliar o modelo |
+| 2026-10-23 | Porcentagens do gráfico calculadas só sobre as fotos identificadas | Não identificadas não distorcem a proporção entre espécies |
 | 2026-10-23 | Refresh token trocado a cada uso; se um token antigo reaparecer, todas as sessões da conta são encerradas | Detecta roubo de sessão |
 
 ## Modelo de dados
 
 Etapa 1: `usuarios`, `tokens`.
 Etapa 2: `especies`, `modelos`, `coletas`, `fotos`, `identificacoes`.
+Etapa 3: `revisoes`; em `fotos`: `especie_id`, `origem_especie`, `revisada`.
 
-Próximas etapas: `revisoes`, `exportacoes`, `planos`, `assinaturas`.
+Próximas etapas: `exportacoes`, `planos`, `assinaturas`.
 
 Campos extras: tipo de armadilha, isca atrativa e bioma (na coleta) e sexo do espécime
 (na foto).

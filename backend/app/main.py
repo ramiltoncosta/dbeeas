@@ -11,7 +11,7 @@ from sqlalchemy import text
 from app.config import get_settings
 from app.db import SessionLocal
 from app.ratelimit import limiter
-from app.routers import admin, arquivos, auth, coletas, eu, fotos, identificar
+from app.routers import admin, arquivos, auth, coletas, especies, eu, fotos, identificar
 
 logging.basicConfig(level=logging.INFO)
 
@@ -19,7 +19,7 @@ app = FastAPI(
     title="DBeeAS",
     description="Sistema inteligente de reconhecimento de abelhas pela asa. "
     "API usada pelo site e pelo aplicativo.",
-    version="0.3.0",
+    version="0.4.0",
 )
 
 app.state.limiter = limiter
@@ -38,6 +38,7 @@ for r in (
     eu.router,
     coletas.router,
     fotos.router,
+    especies.router,
     identificar.router,
     arquivos.router,
     admin.router,
