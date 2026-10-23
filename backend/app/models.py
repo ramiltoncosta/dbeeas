@@ -2,6 +2,7 @@
 
 Etapa 1: usuários e tokens.
 Etapa 2: espécies, modelos, coletas, fotos e identificações.
+Etapa 3: revisões. Etapa 5: exportações. Etapa 6: fichas e mensagens de contato.
 """
 
 import enum
@@ -108,7 +109,7 @@ class Especie(Base):
     """Espécies reconhecidas pelo modelo.
 
     São cadastradas automaticamente quando o modelo as identifica pela primeira vez.
-    A ficha (descrição, características...) é preenchida pelo administrador na etapa 6.
+    A ficha (descrição, características...) fica em FichaEspecie.
     """
 
     __tablename__ = "especies"
@@ -376,3 +377,58 @@ class Exportacao(Base):
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     concluida_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     expira_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+# --- Etapa 6: fichas das espécies e mensagens de contato ------------------------
+
+
+class FichaEspecie(Base):
+    """Ficha de uma espécie (base para estudantes), escrita por especialistas.
+
+    O texto fica no banco (não no código) para o administrador editar pelo site.
+    Só aparece para o público depois de publicada.
+    """
+
+    __tablename__ = "fichas_especies"
+
+    especie_id: Mapped[int] = mapped_column(
+        ForeignKey("especies.id", ondelete="CASCADE"), primary_key=True
+    )
+    nome_popular: Mapped[str | None] = mapped_column(String(200))
+    autoria: Mapped[str | None] = mapped_column(String(200))  # ex.: "Moure, 1970"
+    descricao: Mapped[str | None] = mapped_column(Text)
+    caracteristicas: Mapped[str | None] = mapped_column(Text)
+    distribuicao: Mapped[str | None] = mapped_column(Text)
+    fontes: Mapped[str | None] = mapped_column(Text)  # uma referência por linha
+    imagem: Mapped[str | None] = mapped_column(String(300))
+    credito_imagem: Mapped[str | None] = mapped_column(String(300))
+    publicada: Mapped[bool] = mapped_column(Boolean, default=False)
+    atualizado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    atualizado_por_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="SET NULL")
+    )
+
+    especie: Mapped[Especie] = relationship()
+    atualizado_por: Mapped[Usuario | None] = relationship()
+
+
+class MensagemContato(Base):
+    """Mensagens do formulário de contato da página pública.
+
+    Ficam guardadas além de irem por e-mail: nada se perde se o e-mail falhar.
+    """
+
+    __tablename__ = "mensagens_contato"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    nome: Mapped[str] = mapped_column(String(120))
+    email: Mapped[str] = mapped_column(String(254))
+    instituicao: Mapped[str | None] = mapped_column(String(200))
+    assunto: Mapped[str] = mapped_column(String(40))
+    mensagem: Mapped[str] = mapped_column(Text)
+    respondida: Mapped[bool] = mapped_column(Boolean, default=False)
+    criado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )

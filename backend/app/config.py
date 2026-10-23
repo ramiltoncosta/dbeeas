@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     smtp_senha: str | None = None
     smtp_tls: bool = True
     email_remetente: str = "DBeeAS <nao-responda@dbeeas.com.br>"
+    # Para onde vão as mensagens do formulário de contato
+    email_contato: str = "contato@dbeeas.com.br"
 
     # Perfis
     # Se True, o perfil "pesquisador" só tem acesso à localização exata de
@@ -50,6 +52,8 @@ class Settings(BaseSettings):
     # True = processa na hora, sem Redis (usado nos testes)
     fila_sincrona: bool = False
     max_tentativas: int = 3
+    # Fotos identificadas abaixo desta confiança e sem revisão: sugeridas para conferir
+    confianca_revisao: float = 0.7
 
     # Arquivos (fotos, miniaturas, exportações)
     armazenamento_dir: str = "/data/arquivos"

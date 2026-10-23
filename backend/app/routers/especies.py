@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.deps import usuario_atual
-from app.models import Especie, ModeloIA, Usuario
+from app.models import Especie, FichaEspecie, ModeloIA, Usuario
 from app.schemas_coletas import EspecieOut
 
 router = APIRouter(prefix="/especies", tags=["Espécies"])
@@ -19,13 +19,15 @@ def nomes_do_modelo(db: Session) -> set[str]:
     return nomes
 
 
-def especie_out(e: Especie, do_modelo: set[str]) -> EspecieOut:
+def especie_out(e: Especie, do_modelo: set[str], ficha: bool | None = None) -> EspecieOut:
+    """`ficha`: True = publicada, False = rascunho, None = sem ficha."""
     return EspecieOut(
         id=e.id,
         nome_cientifico=e.nome_cientifico,
         sensivel=e.sensivel,
         raio_ofuscacao_km=e.raio_ofuscacao_km,
         reconhecida_pelo_modelo=e.nome_cientifico in do_modelo,
+        ficha=None if ficha is None else ("publicada" if ficha else "rascunho"),
     )
 
 
@@ -34,7 +36,8 @@ def listar(_: Usuario = Depends(usuario_atual), db: Session = Depends(get_db)):
     """Todas as espécies conhecidas pelo sistema: as que o modelo reconhece e as que
     foram informadas por pesquisadores nas correções."""
     do_modelo = nomes_do_modelo(db)
+    fichas = dict(db.execute(select(FichaEspecie.especie_id, FichaEspecie.publicada)).all())
     return [
-        especie_out(e, do_modelo)
+        especie_out(e, do_modelo, fichas.get(e.id))
         for e in db.scalars(select(Especie).order_by(Especie.nome_cientifico))
     ]
