@@ -130,6 +130,8 @@ Definidas por variáveis de ambiente (veja `.env.example` e `backend/app/config.
 | `SMTP_HOST` e afins | Serviço de e-mail. Vazio = e-mails só no log |
 | `UPLOAD_MAX_MB` | Tamanho máximo de cada foto (padrão 15) |
 | `MAX_TENTATIVAS` | Quantas vezes o worker tenta processar uma foto (padrão 3) |
+| `EMAIL_CONTATO` | Para onde vão as mensagens do formulário de contato (padrão contato@dbeeas.com.br). Elas também ficam em Administração > Mensagens |
+| `CONFIANCA_REVISAO` | Abaixo desta confiança, fotos sem revisão aparecem como "para conferir" (padrão 0.7) |
 | `EXPORTACAO_DIAS` | Por quantos dias o ZIP exportado fica disponível (padrão 7) |
 | `FUSO_HORARIO_PADRAO` | Fuso da data das fotos quando o aparelho não grava (padrão America/Sao_Paulo) |
 | `PESQUISADOR_REQUER_APROVACAO` | Se `true`, pesquisadores precisam de aprovação do administrador para ver a localização exata de espécies sensíveis |
@@ -154,5 +156,5 @@ Plano completo em [docs/prompt-webapp.md](docs/prompt-webapp.md) e decisões em
 - [x] Etapa 3 – Resultado da coleta: agrupamento, gráfico e correção manual
 - [x] Etapa 4 – Mapa
 - [x] Etapa 5 – Exportação ZIP com CSV Darwin Core
-- [ ] Etapa 6 – Painel, fichas das espécies e página pública
+- [x] Etapa 6 – Painel, fichas das espécies e página pública
 - [ ] Etapa 7 – Planos e limites de uso

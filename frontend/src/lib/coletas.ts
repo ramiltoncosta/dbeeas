@@ -133,6 +133,8 @@ export interface ResumoColeta {
   identificadas: number
   nao_identificadas: number
   revisadas: number
+  para_revisar: number
+  limite_confianca_revisao: number
   especies: EspecieNoResumo[]
 }
 
@@ -142,6 +144,7 @@ export interface Especie {
   sensivel: boolean
   raio_ofuscacao_km: number
   reconhecida_pelo_modelo: boolean
+  ficha: 'publicada' | 'rascunho' | null
 }
 
 export interface Pagina<T> {
