@@ -43,8 +43,8 @@ export default function MapaDaColeta({ coletaId, identificadas, aoAbrirFoto }: P
         </div>
       ) : (
         <>
-          <div className="h-72 overflow-hidden rounded-lg border border-tinta-100 lg:flex-1">
-            <MapaOcorrencias ocorrencias={ocorrencias} cor={cor} aoAbrirFoto={aoAbrirFoto} className="h-full min-h-72 w-full" />
+          <div className="h-96 overflow-hidden rounded-lg border border-tinta-100 lg:flex-1">
+            <MapaOcorrencias ocorrencias={ocorrencias} cor={cor} aoAbrirFoto={aoAbrirFoto} className="h-full min-h-96 w-full" />
           </div>
           <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm" aria-label="Legenda do mapa">
             {legenda
@@ -64,6 +64,9 @@ export default function MapaDaColeta({ coletaId, identificadas, aoAbrirFoto }: P
               </li>
             )}
           </ul>
+          <p className="mt-2 text-xs text-tinta-500">
+            Passe o mouse sobre um ponto para ver a foto; clique para abri-la.
+          </p>
           {semLocal > 0 && (
             <p className="mt-2 text-xs text-tinta-500">
               {semLocal} foto(s) identificada(s) sem localização não aparecem no mapa.

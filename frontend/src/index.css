@@ -48,3 +48,12 @@ html {
   border: 3px solid #ffffff;
   box-shadow: 0 1px 4px rgb(16 42 51 / 0.35);
 }
+
+/* Prévia da foto ao passar o mouse sobre um ponto do mapa */
+.dbeeas-previa {
+  padding: 8px;
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgb(16 42 51 / 0.25);
+  white-space: normal;
+}

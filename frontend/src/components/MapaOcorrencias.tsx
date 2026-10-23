@@ -10,8 +10,8 @@
  */
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import { useEffect, useMemo, useState } from 'react'
-import { Circle, CircleMarker, MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Circle, CircleMarker, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import { Link } from 'react-router-dom'
 import Supercluster from 'supercluster'
 import { urlArquivo } from '../lib/api'
@@ -43,10 +43,24 @@ function Pontos({
   aoAbrirFoto: AoAbrirFoto
 }) {
   const mapa = useMap()
-  // Redesenha quando o mapa muda; o zoom e a área visível são lidos direto do mapa
+  // Redesenha quando o mapa muda; o zoom e a área visível são lidos direto do mapa.
+  // Com um balão aberto, o mapa se desloca sozinho para mostrá-lo inteiro: nesse caso não
+  // redesenhamos, senão o balão fecharia logo depois de abrir.
   const [, setVersao] = useState(0)
   const redesenhar = () => setVersao((v) => v + 1)
-  useMapEvents({ moveend: redesenhar, zoomend: redesenhar, resize: redesenhar })
+  const balaoAberto = useRef(false)
+  useMapEvents({
+    zoomend: redesenhar,
+    resize: redesenhar,
+    moveend: () => !balaoAberto.current && redesenhar(),
+    popupopen: () => {
+      balaoAberto.current = true
+    },
+    popupclose: () => {
+      balaoAberto.current = false
+      redesenhar()
+    },
+  })
 
   const indice = useMemo(() => {
     const s = new Supercluster<Propriedades>({ radius: 50, maxZoom: 16 })
@@ -112,42 +126,88 @@ function PontoOcorrencia({
   cor: string
   aoAbrirFoto: AoAbrirFoto
 }) {
+  // Ao passar o mouse: prévia grande da foto, espécie e data (some ao tirar o mouse)
+  const previa = (
+    <Tooltip
+      direction="top"
+      offset={[0, -10]}
+      opacity={1}
+      className="dbeeas-previa"
+    >
+      <div className="w-56 space-y-1 text-sm">
+        {p.url_miniatura && (
+          <img src={urlArquivo(p.url_miniatura)} alt="" className="h-36 w-full rounded object-cover" />
+        )}
+        <p className="font-semibold italic text-tinta-900">{p.especie}</p>
+        <p className="text-tinta-500">
+          {p.data ? dataBR(p.data) : 'Data não informada'}
+          {p.revisada && ' · ✓ revisada'}
+        </p>
+        {p.aproximada && <p className="text-xs text-tinta-500">Localização aproximada (cerca de {p.raio_km} km)</p>}
+        {p.foto_id && (
+          <p className="text-xs font-semibold text-tinta-700">
+            {aoAbrirFoto ? 'Clique para abrir a foto' : 'Clique para mais opções'}
+          </p>
+        )}
+      </div>
+    </Tooltip>
+  )
+
+  // Ao clicar: fica aberto até fechar, com os links
   const popup = (
-    <Popup>
-      <div className="min-w-44 space-y-1 text-sm">
-        {p.url_miniatura && <img src={urlArquivo(p.url_miniatura)} alt="" className="mb-2 w-full rounded" />}
+    <Popup autoPanPadding={[24, 24]}>
+      <div className="w-60 space-y-1 text-sm">
+        {p.url_miniatura && (
+          <img src={urlArquivo(p.url_miniatura)} alt="" className="mb-2 h-40 w-full rounded object-cover" />
+        )}
         <p className="font-semibold italic">{p.especie}</p>
         <p>{p.data ? dataBR(p.data) : 'Data não informada'}</p>
         {p.revisada && <p className="text-xs">✓ Revisada por uma pessoa</p>}
         {p.aproximada && (
           <p className="text-xs">Espécie sensível: localização aproximada (área de cerca de {p.raio_km} km).</p>
         )}
-        {aoAbrirFoto && p.foto_id ? (
-          <button className="font-semibold text-tinta-700 underline" onClick={() => aoAbrirFoto(p.foto_id!)}>
-            Ver foto
-          </button>
-        ) : (
-          p.coleta &&
-          p.coleta_id && (
-            <p>
-              <Link to={`/coletas/${p.coleta_id}`} className="font-semibold underline">
-                {p.coleta}
-              </Link>
-            </p>
-          )
+        {p.coleta && p.coleta_id && (
+          <p>
+            <Link to={`/coletas/${p.coleta_id}`} className="font-semibold underline">
+              {p.coleta}
+            </Link>
+          </p>
         )}
         {!p.minha && !p.coleta && <p className="text-xs">Registro de outra pessoa.</p>}
       </div>
     </Popup>
   )
+  // Na página da coleta, clicar no ponto abre a foto grande (com a caixa do modelo e a revisão)
+  const abreFoto = aoAbrirFoto && p.foto_id
+  const eventos: L.LeafletEventHandlerFnMap = {
+    // Ponto na metade de cima do mapa: a prévia abre para baixo, para não ser cortada
+    tooltipopen: (e) => {
+      const dica = (e as L.TooltipEvent).tooltip
+      const camada = e.target as L.CircleMarker
+      const mapa = (camada as unknown as { _map?: L.Map })._map
+      if (!mapa) return
+      const emCima = mapa.latLngToContainerPoint(camada.getLatLng()).y < mapa.getSize().y / 2
+      const direcao = emCima ? 'bottom' : 'top'
+      if (dica.options.direction !== direcao) {
+        dica.options.direction = direcao
+        dica.options.offset = L.point(0, emCima ? 10 : -10)
+        dica.update() // reposiciona já com a nova direção
+      }
+    },
+    ...(abreFoto ? { click: () => aoAbrirFoto(p.foto_id!) } : {}),
+  }
+  const balao = abreFoto ? null : popup
+
   if (p.aproximada && p.raio_km) {
     return (
       <Circle
         center={[lat, lon]}
         radius={(p.raio_km * 1000) / 2}
         pathOptions={{ color: cor, weight: 2, dashArray: '6 6', fillColor: cor, fillOpacity: 0.12 }}
+        eventHandlers={eventos}
       >
-        {popup}
+        {previa}
+        {balao}
       </Circle>
     )
   }
@@ -157,8 +217,10 @@ function PontoOcorrencia({
       radius={7}
       // Anel branco separa pontos sobrepostos
       pathOptions={{ color: '#ffffff', weight: 2, fillColor: cor, fillOpacity: 1 }}
+      eventHandlers={eventos}
     >
-      {popup}
+      {previa}
+      {balao}
     </CircleMarker>
   )
 }
@@ -166,7 +228,7 @@ function PontoOcorrencia({
 interface Props {
   ocorrencias: Ocorrencia[]
   cor: Map<number, string>
-  /** Se informado, o balão do ponto ganha o botão "Ver foto" (em vez do link para a coleta) */
+  /** Se informado, clicar num ponto (das suas fotos) abre a foto em vez do balão */
   aoAbrirFoto?: (fotoId: string) => void
   className?: string
 }
