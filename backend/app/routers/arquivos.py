@@ -21,6 +21,14 @@ def baixar(chave: str, expira: int = Query(...), assinatura: str = Query(...)):
         raise HTTPException(404, "Arquivo não encontrado.") from None
     if not caminho.is_file():
         raise HTTPException(404, "Arquivo não encontrado.")
+    if caminho.suffix == ".zip":
+        # Exportações: o navegador baixa com o nome do arquivo, em vez de abrir
+        return FileResponse(
+            caminho,
+            filename=caminho.name,
+            media_type="application/zip",
+            headers={"Cache-Control": "private, no-store"},
+        )
     return FileResponse(
         caminho,
         # Pode ficar no cache do navegador enquanto o link valer

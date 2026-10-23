@@ -97,7 +97,7 @@ services:
     volumes:
       - arquivos:/data/arquivos
     environment: *ambiente-backend
-    command: rq worker --url redis://redis:6379/0 --with-scheduler fotos
+    command: rq worker --url redis://redis:6379/0 --with-scheduler fotos exportacoes
     depends_on:
       - backend
     restart: unless-stopped

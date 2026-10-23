@@ -57,6 +57,8 @@ class Settings(BaseSettings):
     max_fotos_por_envio: int = 20
     # Fuso usado para a data das fotos quando o aparelho não grava o fuso
     fuso_horario_padrao: str = "America/Sao_Paulo"
+    # Por quantos dias o ZIP de uma exportação fica disponível para baixar
+    exportacao_dias: int = 7
     # Por quanto tempo os links das imagens valem
     url_assinada_minutos: int = 120
 
