@@ -43,6 +43,12 @@ services:
       retries: 10
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+
   # API de detecção (YOLO): agora só acessível pela rede interna
   detector:
     build: ./api
@@ -55,9 +61,13 @@ services:
 
   backend:
     build: ./backend
-    environment:
+    volumes:
+      - arquivos:/data/arquivos
+    environment: &ambiente-backend
       AMBIENTE: producao
       DATABASE_URL: postgresql+psycopg://dbeeas:${POSTGRES_PASSWORD}@db:5432/dbeeas
+      REDIS_URL: redis://redis:6379/0
+      DETECTOR_URL: http://detector:8000
       JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env}
       COOKIE_SEGURO: "true"
       FRONTEND_URL: https://${SITE_DOMAIN}
@@ -71,12 +81,25 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
     labels:
       - traefik.enable=true
       - traefik.http.routers.backend.rule=Host(`${API_DOMAIN}`)
       - traefik.http.routers.backend.entrypoints=websecure
       - traefik.http.routers.backend.tls.certresolver=le
       - traefik.http.services.backend.loadbalancer.server.port=8000
+    restart: unless-stopped
+
+  # Worker: processa as fotos da fila (mesmo código do backend)
+  worker:
+    build: ./backend
+    volumes:
+      - arquivos:/data/arquivos
+    environment: *ambiente-backend
+    command: rq worker --url redis://redis:6379/0 --with-scheduler fotos
+    depends_on:
+      - backend
     restart: unless-stopped
 
   frontend:
@@ -95,3 +118,5 @@ services:
 volumes:
   letsencrypt:
   dbdata:
+  redisdata:
+  arquivos: # fotos e miniaturas (incluir no backup!)

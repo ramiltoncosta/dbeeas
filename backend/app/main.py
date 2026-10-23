@@ -11,7 +11,7 @@ from sqlalchemy import text
 from app.config import get_settings
 from app.db import SessionLocal
 from app.ratelimit import limiter
-from app.routers import admin, auth, eu
+from app.routers import admin, arquivos, auth, coletas, eu, fotos, identificar
 
 logging.basicConfig(level=logging.INFO)
 
@@ -19,7 +19,7 @@ app = FastAPI(
     title="DBeeAS",
     description="Sistema inteligente de reconhecimento de abelhas pela asa. "
     "API usada pelo site e pelo aplicativo.",
-    version="0.2.0",
+    version="0.3.0",
 )
 
 app.state.limiter = limiter
@@ -33,7 +33,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (auth.router, eu.router, admin.router):
+for r in (
+    auth.router,
+    eu.router,
+    coletas.router,
+    fotos.router,
+    identificar.router,
+    arquivos.router,
+    admin.router,
+):
     app.include_router(r, prefix="/v1")
 
 

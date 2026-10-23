@@ -10,7 +10,8 @@ RUN pip install --no-cache-dir -r $([ "$DEV" = "true" ] && echo requirements-dev
 
 COPY . .
 
-RUN useradd --create-home dbeeas && chown -R dbeeas /app
+# Pasta das fotos: criada aqui para o volume do Docker já nascer com o dono certo
+RUN useradd --create-home dbeeas && mkdir -p /data/arquivos && chown -R dbeeas /app /data/arquivos
 USER dbeeas
 
 EXPOSE 8000

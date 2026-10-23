@@ -3,11 +3,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
 from app.deps import usuario_atual
-from app.models import Perfil, Usuario
+from app.models import Coleta, Foto, Perfil, Usuario
+from app.routers.coletas import apagar_arquivos
 from app.schemas import (
     AtualizarContaIn,
     ExcluirContaIn,
@@ -15,6 +16,7 @@ from app.schemas import (
     TrocarSenhaIn,
     UsuarioOut,
 )
+from app.schemas_coletas import ColetaOut, FotoOut
 from app.security import agora, gerar_hash_senha, verificar_senha
 from app.sessao import iniciar_sessao, limpar_cookie, revogar_sessoes
 
@@ -58,11 +60,17 @@ def trocar_senha(
 
 
 @router.get("/dados")
-def exportar_dados(usuario: Usuario = Depends(usuario_atual)):
-    """LGPD: baixa todos os dados pessoais guardados sobre o usuário.
+def exportar_dados(usuario: Usuario = Depends(usuario_atual), db: Session = Depends(get_db)):
+    """LGPD: baixa todos os dados pessoais guardados sobre o usuário (conta, coletas e fotos).
 
-    Nas próximas etapas, este arquivo vai incluir também coletas e fotos.
+    As imagens em si podem ser baixadas pela exportação de cada coleta (etapa 5).
     """
+    coletas = db.scalars(
+        select(Coleta)
+        .where(Coleta.usuario_id == usuario.id)
+        .options(selectinload(Coleta.fotos))
+        .order_by(Coleta.criado_em)
+    ).all()
     dados = {
         "conta": {
             "id": str(usuario.id),
@@ -82,6 +90,18 @@ def exportar_dados(usuario: Usuario = Depends(usuario_atual)):
             if usuario.consentimento_uso_fotos_em
             else None,
         },
+        "coletas": [
+            {
+                **ColetaOut.de(c).model_dump(mode="json", exclude={"fotos", "usuario_id"}),
+                "fotos": [
+                    FotoOut.de(f).model_dump(
+                        mode="json", exclude={"url_miniatura", "url_media", "url_original"}
+                    )
+                    for f in c.fotos
+                ],
+            }
+            for c in coletas
+        ],
         "exportado_em": agora().isoformat(),
     }
     return JSONResponse(
@@ -110,8 +130,15 @@ def excluir_conta(
             raise HTTPException(
                 400, "Você é o único administrador. Crie outro antes de excluir sua conta."
             )
+    arquivos = [
+        chave
+        for f in db.scalars(select(Foto).where(Foto.usuario_id == usuario.id))
+        for chave in (f.arquivo, f.miniatura, f.media)
+        if chave
+    ]
     db.delete(usuario)
     db.commit()
+    apagar_arquivos(arquivos)  # as fotos também são apagadas do servidor
     limpar_cookie(response)
     response.status_code = status.HTTP_204_NO_CONTENT
     return response

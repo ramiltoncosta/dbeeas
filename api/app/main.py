@@ -6,6 +6,7 @@ mais provável, a confiança e as caixas detectadas.
 """
 
 import base64
+import hashlib
 import io
 import os
 from contextlib import asynccontextmanager
@@ -25,15 +26,27 @@ MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "15"))
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 model: YOLO | None = None
+model_version: str | None = None
+
+
+def _hash_arquivo(caminho: str) -> str:
+    h = hashlib.sha256()
+    with open(caminho, "rb") as f:
+        for bloco in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(bloco)
+    return h.hexdigest()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Carrega o modelo uma única vez, quando a API inicia
-    global model
+    global model, model_version
     if not os.path.exists(MODEL_PATH):
         raise RuntimeError(f"Modelo não encontrado em {MODEL_PATH}")
     model = YOLO(MODEL_PATH)
+    # Versão do modelo: definida em MODEL_VERSION ou, se vazia, os 12 primeiros
+    # caracteres do hash do arquivo (muda sempre que o arquivo muda)
+    model_version = os.getenv("MODEL_VERSION") or _hash_arquivo(MODEL_PATH)[:12]
     yield
 
 
@@ -51,6 +64,7 @@ def health():
     return {
         "status": "ok",
         "modelo_carregado": model is not None,
+        "versao_modelo": model_version,
         "especies": list(model.names.values()) if model else [],
     }
 
@@ -86,6 +100,7 @@ def _run_detection(image: Image.Image, annotate: bool) -> dict:
         else "Não foi possível identificar a espécie. Tente outra foto da asa.",
         "deteccoes": detections,
         "imagem": {"largura": image.width, "altura": image.height},
+        "versao_modelo": model_version,
     }
 
     if annotate:

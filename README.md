@@ -24,7 +24,8 @@ Como as partes se conectam:
 ```
 navegador ──► frontend (React)
           └─► backend (FastAPI) ──► PostgreSQL + PostGIS
-                                └─► detector (YOLO)   [a partir da etapa 2]
+                     │
+                     └─► Redis (fila) ◄── worker ──► detector (YOLO)
 ```
 
 ## Desenvolvimento (no seu computador)
@@ -53,6 +54,12 @@ Pré-requisito: Docker instalado (veja abaixo).
 
    ```bash
    docker compose exec backend python -m app.cli criar-admin
+   ```
+
+5. Para ver as fotos sendo processadas:
+
+   ```bash
+   docker compose logs -f worker
    ```
 
 ### Testes
@@ -97,8 +104,11 @@ docker compose -f docker-compose.prod.yml exec backend python -m app.cli criar-a
 Ver o que está acontecendo:
 
 ```bash
-docker compose -f docker-compose.prod.yml logs -f backend
+docker compose -f docker-compose.prod.yml logs -f backend worker
 ```
+
+**Backup:** o banco (volume `dbdata`) e as fotos (volume `arquivos`) são os dados do
+projeto. O script de backup entra numa próxima etapa; até lá, não apague esses volumes.
 
 ### DNS (Registro.br)
 
@@ -118,6 +128,9 @@ Definidas por variáveis de ambiente (veja `.env.example` e `backend/app/config.
 | `ACCESS_TOKEN_MINUTOS` | Duração do token de acesso (padrão 15) |
 | `REFRESH_TOKEN_DIAS` | Por quanto tempo a pessoa fica logada (padrão 30) |
 | `SMTP_HOST` e afins | Serviço de e-mail. Vazio = e-mails só no log |
+| `UPLOAD_MAX_MB` | Tamanho máximo de cada foto (padrão 15) |
+| `MAX_TENTATIVAS` | Quantas vezes o worker tenta processar uma foto (padrão 3) |
+| `FUSO_HORARIO_PADRAO` | Fuso da data das fotos quando o aparelho não grava (padrão America/Sao_Paulo) |
 | `PESQUISADOR_REQUER_APROVACAO` | Se `true`, pesquisadores precisam de aprovação do administrador para ver a localização exata de espécies sensíveis |
 
 ## Detector (YOLO)
@@ -136,7 +149,7 @@ Plano completo em [docs/prompt-webapp.md](docs/prompt-webapp.md) e decisões em
 [docs/arquitetura.md](docs/arquitetura.md).
 
 - [x] Etapa 1 – Banco de dados, autenticação e perfis
-- [ ] Etapa 2 – Coletas e envio de fotos com fila de processamento
+- [x] Etapa 2 – Coletas e envio de fotos com fila de processamento
 - [ ] Etapa 3 – Resultado da coleta: agrupamento, gráfico e correção manual
 - [ ] Etapa 4 – Mapa
 - [ ] Etapa 5 – Exportação ZIP com CSV Darwin Core
