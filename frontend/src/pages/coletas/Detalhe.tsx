@@ -1,12 +1,14 @@
 /** Página da coleta: dados, envio de fotos, andamento e fotos. */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Alerta, Botao, Carregando } from '../../components/ui'
 import { api, mensagemErro, urlArquivo } from '../../lib/api'
-import { BIOMAS, dataBR, type Coleta, type Contagem, type Foto, type Pagina } from '../../lib/coletas'
+import { BIOMAS, dataBR, type Coleta, type Contagem, type Foto, type Pagina, type ResumoColeta } from '../../lib/coletas'
 import Envio from './Envio'
 import FotoModal, { Selo } from './FotoModal'
+import { parametrosFiltro, type Filtro } from '../../lib/filtros'
+import { FiltrosFotos, GraficoEspecies } from './Resultado'
 
 function Andamento({ c }: { c: Contagem }) {
   const pendentes = c.na_fila + c.processando
@@ -71,7 +73,7 @@ export default function DetalheColeta() {
   const { id = '' } = useParams()
   const navegar = useNavigate()
   const cliente = useQueryClient()
-  const [fotoAberta, setFotoAberta] = useState<string | null>(null)
+  const [fotoAberta, setFotoAberta] = useState<Foto | null>(null)
   const [confirmarExclusao, setConfirmarExclusao] = useState(false)
 
   const coleta = useQuery({ queryKey: ['coleta', id], queryFn: () => api<Coleta>(`/v1/coletas/${id}`) })
@@ -83,20 +85,36 @@ export default function DetalheColeta() {
     refetchInterval: (q) => (q.state.data && q.state.data.na_fila + q.state.data.processando > 0 ? 2000 : false),
   })
 
+  const [filtro, setFiltro] = useState<Filtro>({ tipo: 'todas' })
+  const params = new URLSearchParams({ por_pagina: '500', ...parametrosFiltro(filtro) })
   const fotos = useQuery({
-    queryKey: ['fotos', id],
-    queryFn: () => api<Pagina<Foto>>(`/v1/coletas/${id}/fotos?por_pagina=200`),
+    queryKey: ['fotos', id, params.toString()],
+    queryFn: () => api<Pagina<Foto>>(`/v1/coletas/${id}/fotos?${params}`),
+    placeholderData: keepPreviousData,
   })
 
-  // Quando mais fotos terminam, atualiza a grade
+  const resumo = useQuery({
+    queryKey: ['resumo', id],
+    queryFn: () => api<ResumoColeta>(`/v1/coletas/${id}/resumo`),
+  })
+
+  // Quando mais fotos terminam (ou chegam), atualiza a grade e o gráfico
   const prontasAntes = useRef<number | null>(null)
   const prontas = progresso.data ? progresso.data.concluidas + progresso.data.erro + progresso.data.total : null
   useEffect(() => {
     if (prontas !== null && prontasAntes.current !== null && prontas !== prontasAntes.current) {
       cliente.invalidateQueries({ queryKey: ['fotos', id] })
+      cliente.invalidateQueries({ queryKey: ['resumo', id] })
     }
     prontasAntes.current = prontas
   }, [prontas, cliente, id])
+
+  // Se o filtro escolhido ficou vazio (ex.: a última foto daquela espécie foi corrigida), volta para "Todas"
+  useEffect(() => {
+    if (filtro.tipo === 'especie' && resumo.data && !resumo.data.especies.some((e) => e.id === filtro.id)) {
+      setFiltro({ tipo: 'todas' })
+    }
+  }, [filtro, resumo.data])
 
   const excluir = useMutation({
     mutationFn: () => api(`/v1/coletas/${id}`, { method: 'DELETE' }),
@@ -110,7 +128,6 @@ export default function DetalheColeta() {
   if (coleta.error || !coleta.data) return <Alerta>{mensagemErro(coleta.error)}</Alerta>
 
   const c = coleta.data
-  const foto = fotos.data?.itens.find((f) => f.id === fotoAberta)
 
   return (
     <div className="space-y-6">
@@ -143,16 +160,32 @@ export default function DetalheColeta() {
 
       <Envio coletaId={id} />
 
-      {progresso.data && progresso.data.total > 0 && <Andamento c={progresso.data} />}
+      {progresso.data && progresso.data.na_fila + progresso.data.processando > 0 && <Andamento c={progresso.data} />}
 
-      {fotos.data && fotos.data.itens.length > 0 && (
-        <section>
-          <h2 className="mb-3 text-lg font-bold text-tinta-800">Fotos</h2>
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            {fotos.data.itens.map((f) => (
+      {resumo.data && resumo.data.total > 0 && (
+        <section className="rounded-2xl border border-tinta-100 bg-white p-5 shadow-sm">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-bold text-tinta-800">Espécies na coleta</h2>
+            {resumo.data.revisadas > 0 && (
+              <span className="text-xs text-tinta-500">{resumo.data.revisadas} foto(s) revisada(s) por pessoas</span>
+            )}
+          </div>
+          <GraficoEspecies resumo={resumo.data} filtro={filtro} aoFiltrar={setFiltro} />
+        </section>
+      )}
+
+      {resumo.data && resumo.data.total > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-bold text-tinta-800">Fotos</h2>
+          <FiltrosFotos resumo={resumo.data} filtro={filtro} aoFiltrar={setFiltro} />
+          {fotos.data && fotos.data.itens.length === 0 && (
+            <p className="py-6 text-center text-sm text-tinta-500">Nenhuma foto neste filtro.</p>
+          )}
+          <ul className={`grid grid-cols-2 gap-3 transition-opacity sm:grid-cols-3 lg:grid-cols-5 ${fotos.isPlaceholderData ? 'opacity-60' : ''}`}>
+            {fotos.data?.itens.map((f) => (
               <li key={f.id}>
                 <button
-                  onClick={() => setFotoAberta(f.id)}
+                  onClick={() => setFotoAberta(f)}
                   className="group block w-full overflow-hidden rounded-xl border border-tinta-100 bg-white text-left shadow-sm transition hover:border-mel-400"
                 >
                   <div className="aspect-[4/3] bg-tinta-50">
@@ -164,7 +197,7 @@ export default function DetalheColeta() {
                   </div>
                   <div className="space-y-1 p-2.5">
                     <p className="truncate text-sm font-semibold italic text-tinta-800">
-                      {f.identificacao?.especie ?? <span className="not-italic text-tinta-500">{f.nome_original}</span>}
+                      {f.especie ?? <span className="not-italic text-tinta-500">{f.nome_original}</span>}
                     </p>
                     <Selo foto={f} />
                   </div>
@@ -175,7 +208,9 @@ export default function DetalheColeta() {
         </section>
       )}
 
-      {foto && <FotoModal foto={foto} localColeta={c.local} aoFechar={() => setFotoAberta(null)} />}
+      {fotoAberta && (
+        <FotoModal key={fotoAberta.id} foto={fotoAberta} localColeta={c.local} aoFechar={() => setFotoAberta(null)} />
+      )}
     </div>
   )
 }
