@@ -43,6 +43,21 @@ class Settings(BaseSettings):
     # espécies sensíveis depois que um administrador aprovar.
     pesquisador_requer_aprovacao: bool = False
 
+    # Detector (API do YOLO) e fila de processamento
+    detector_url: str = "http://detector:8000"
+    detector_timeout_s: int = 180
+    redis_url: str = "redis://redis:6379/0"
+    # True = processa na hora, sem Redis (usado nos testes)
+    fila_sincrona: bool = False
+    max_tentativas: int = 3
+
+    # Arquivos (fotos, miniaturas, exportações)
+    armazenamento_dir: str = "/data/arquivos"
+    upload_max_mb: int = 15
+    max_fotos_por_envio: int = 20
+    # Por quanto tempo os links das imagens valem
+    url_assinada_minutos: int = 120
+
     # Limite de tentativas (login, cadastro, recuperação de senha)
     limite_auth: str = "10/minute"
     ratelimit_storage: str = "memory://"
