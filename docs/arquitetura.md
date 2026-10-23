@@ -31,17 +31,24 @@ Registro das decisões tomadas, para consulta futura.
 | 2026-10-23 | Localização exata de espécies sensíveis: dono da foto, administrador e pesquisadores | Definido pelo responsável do projeto. Opção `PESQUISADOR_REQUER_APROVACAO` permite exigir aprovação do administrador |
 | 2026-10-23 | E-mails: simulador (Mailpit) no desenvolvimento; em produção, só no log até haver um serviço de e-mail | Ainda não há serviço de e-mail contratado |
 | 2026-10-23 | Sessão: token de acesso de 15 min na memória do navegador + refresh token num cookie protegido (httpOnly). O aplicativo recebe o refresh token no corpo da resposta (cabeçalho `X-Cliente: app`) | Evita que um script malicioso na página roube a sessão |
+| 2026-10-23 | Fotos guardadas num volume do Docker, atrás de uma interface de armazenamento | Trocar depois por um armazenamento de objetos (S3, R2, B2) sem mudar o resto |
+| 2026-10-23 | Imagens entregues por links assinados com prazo (2 h) | `<img>` não envia o token de login; o link só funciona para quem o recebeu da API |
+| 2026-10-23 | A foto original é guardada sem alteração; o detector recebe a foto já girada conforme o EXIF | As caixas ficam na mesma posição da imagem mostrada no site |
+| 2026-10-23 | Data da foto: fuso gravado pelo aparelho; se não houver, America/Sao_Paulo | O EXIF antigo não guarda fuso |
+| 2026-10-23 | Fotos sem GPS herdam o ponto da coleta (não é copiado para a foto) | Corrigir o ponto da coleta corrige todas as fotos sem GPS |
+| 2026-10-23 | Fotos repetidas (mesmo conteúdo) na mesma coleta são recusadas | Evita contagens infladas no gráfico |
+| 2026-10-23 | O detector informa a versão do modelo (MODEL_VERSION ou hash do arquivo) | Cada identificação registra qual modelo foi usado |
 | 2026-10-23 | Refresh token trocado a cada uso; se um token antigo reaparecer, todas as sessões da conta são encerradas | Detecta roubo de sessão |
 
 ## Modelo de dados
 
-Etapa 1 (implementado): `usuarios`, `tokens`.
+Etapa 1: `usuarios`, `tokens`.
+Etapa 2: `especies`, `modelos`, `coletas`, `fotos`, `identificacoes`.
 
-Próximas etapas: `planos`, `assinaturas`, `modelos`, `especies`, `coletas`, `fotos`,
-`identificacoes`, `revisoes`, `exportacoes`.
+Próximas etapas: `revisoes`, `exportacoes`, `planos`, `assinaturas`.
 
-Campos extras da coleta (definidos para a etapa 2): tipo de armadilha, isca atrativa,
-bioma e sexo do espécime (por foto).
+Campos extras: tipo de armadilha, isca atrativa e bioma (na coleta) e sexo do espécime
+(na foto).
 
 ## Perfis
 
