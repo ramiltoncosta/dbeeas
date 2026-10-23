@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+/* Cores do DBeeAS: mel (destaque) e azul-petróleo (texto e marca da RCGJ) */
+@theme {
+  --color-mel-50: #fdf8ec;
+  --color-mel-100: #faefd2;
+  --color-mel-200: #f4dc9f;
+  --color-mel-400: #e8b552;
+  --color-mel-500: #e0a23a;
+  --color-mel-600: #c4831f;
+  --color-mel-700: #a2661a;
+
+  --color-tinta-50: #eef4f6;
+  --color-tinta-100: #d6e4e9;
+  --color-tinta-300: #8fb0bd;
+  --color-tinta-500: #3c6f82;
+  --color-tinta-700: #1f4e5f;
+  --color-tinta-800: #183d4a;
+  --color-tinta-900: #102a33;
+
+  --color-fundo: #fbf8f2;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+html {
+  background: var(--color-fundo);
+  color: var(--color-tinta-900);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Foco visível para quem navega pelo teclado */
+:focus-visible {
+  outline: 2px solid var(--color-mel-500);
+  outline-offset: 2px;
+}

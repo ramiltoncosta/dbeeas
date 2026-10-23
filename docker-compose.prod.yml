@@ -1,0 +1,97 @@
+# Ambiente de PRODUÇÃO (servidor)
+# Uso:
+#   cp .env.example .env   (e preencha)
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Só o Traefik expõe portas para a internet. Banco e detector ficam
+# apenas na rede interna do Docker.
+
+services:
+  traefik:
+    image: traefik:v3.3
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      # HTTP (porta 80) redireciona tudo para HTTPS
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      # Certificado HTTPS gratuito e automático (Let's Encrypt)
+      - --certificatesresolvers.le.acme.email=${ACME_EMAIL:?defina ACME_EMAIL no .env}
+      - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.le.acme.httpchallenge.entrypoint=web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt:/letsencrypt
+    restart: unless-stopped
+
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: dbeeas
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+      POSTGRES_DB: dbeeas
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dbeeas"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # API de detecção (YOLO): agora só acessível pela rede interna
+  detector:
+    build: ./api
+    volumes:
+      - ./models:/models:ro
+    environment:
+      MODEL_PATH: /models/best.pt
+      MIN_CONFIDENCE: "0.50"
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    environment:
+      AMBIENTE: producao
+      DATABASE_URL: postgresql+psycopg://dbeeas:${POSTGRES_PASSWORD}@db:5432/dbeeas
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env}
+      COOKIE_SEGURO: "true"
+      FRONTEND_URL: https://${SITE_DOMAIN}
+      CORS_ORIGENS: https://${SITE_DOMAIN},https://www.${SITE_DOMAIN}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORTA: ${SMTP_PORTA:-587}
+      SMTP_USUARIO: ${SMTP_USUARIO:-}
+      SMTP_SENHA: ${SMTP_SENHA:-}
+      EMAIL_REMETENTE: ${EMAIL_REMETENTE:-DBeeAS <nao-responda@dbeeas.com.br>}
+      PESQUISADOR_REQUER_APROVACAO: ${PESQUISADOR_REQUER_APROVACAO:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.backend.rule=Host(`${API_DOMAIN}`)
+      - traefik.http.routers.backend.entrypoints=websecure
+      - traefik.http.routers.backend.tls.certresolver=le
+      - traefik.http.services.backend.loadbalancer.server.port=8000
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: https://${API_DOMAIN}
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.frontend.rule=Host(`${SITE_DOMAIN}`) || Host(`www.${SITE_DOMAIN}`)
+      - traefik.http.routers.frontend.entrypoints=websecure
+      - traefik.http.routers.frontend.tls.certresolver=le
+      - traefik.http.services.frontend.loadbalancer.server.port=80
+    restart: unless-stopped
+
+volumes:
+  letsencrypt:
+  dbdata:

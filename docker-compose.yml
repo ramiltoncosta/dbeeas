@@ -1,12 +1,76 @@
+# Ambiente de DESENVOLVIMENTO (seu computador)
+# Uso: docker compose up --build
+#
+#   Site ................ http://localhost:5173
+#   API (documentação) .. http://localhost:8000/docs
+#   E-mails de teste .... http://localhost:8025
+#   Detector (direto) ... http://localhost:8001/docs
+#
+# ":Z" nos volumes é necessário no Fedora por causa do SELinux.
+
 services:
-  api:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: dbeeas
+      POSTGRES_PASSWORD: dbeeas
+      POSTGRES_DB: dbeeas
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dbeeas"]
+      interval: 5s
+      retries: 10
+
+  # Captura os e-mails do sistema (nada é enviado de verdade)
+  mailpit:
+    image: axllent/mailpit:v1.21
+    ports:
+      - "8025:8025"
+
+  # Sua API de detecção (YOLO). Fica só para uso interno do sistema.
+  detector:
     build: ./api
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
-      # ":Z" é necessário no Fedora por causa do SELinux
       - ./models:/models:ro,Z
     environment:
       MODEL_PATH: /models/best.pt
       MIN_CONFIDENCE: "0.50"
-    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      args:
+        DEV: "true"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app:Z # o código muda sem precisar reconstruir
+    environment:
+      DATABASE_URL: postgresql+psycopg://dbeeas:dbeeas@db:5432/dbeeas
+      FRONTEND_URL: http://localhost:5173
+      CORS_ORIGENS: http://localhost:5173
+      SMTP_HOST: mailpit
+      SMTP_PORTA: "1025"
+      SMTP_TLS: "false"
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    image: node:22-alpine
+    working_dir: /app
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app:Z
+      - /app/node_modules # as bibliotecas ficam dentro do contêiner
+    environment:
+      VITE_API_URL: http://localhost:8000
+    command: sh -c "npm install && npm run dev"
+
+volumes:
+  dbdata:
