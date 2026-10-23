@@ -148,7 +148,7 @@ export default function Mapa() {
           <div className="space-y-2 border-t border-tinta-100 pt-3 text-xs text-tinta-500">
             <p className="flex items-center gap-2">
               <span className="dbeeas-cluster !static !h-6 !w-6 !text-[11px]"><span>5</span></span>
-              Grupo de ocorrências próximas: clique para aproximar.
+              Grupo de ocorrências próximas ou no mesmo lugar: passe o mouse para ver as espécies e clique para abrir.
             </p>
             {aproximadas > 0 && (
               <p className="flex items-center gap-2">

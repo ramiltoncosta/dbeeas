@@ -65,7 +65,7 @@ export default function MapaDaColeta({ coletaId, identificadas, aoAbrirFoto }: P
             )}
           </ul>
           <p className="mt-2 text-xs text-tinta-500">
-            Passe o mouse sobre um ponto para ver a foto; clique para abri-la.
+            Passe o mouse sobre um ponto para ver a foto; clique para abri-la. Fotos no mesmo lugar (como as sem GPS, que usam o ponto da coleta) ficam agrupadas com o número: clique no grupo para abrir em leque.
           </p>
           {semLocal > 0 && (
             <p className="mt-2 text-xs text-tinta-500">
