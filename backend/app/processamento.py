@@ -7,15 +7,15 @@ import logging
 import uuid
 
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import detector
 from app.armazenamento import get_armazenamento
 from app.config import get_settings
 from app.db import SessionLocal
+from app.especies import obter_ou_criar, obter_ou_criar_especie, recalcular_especie_final
 from app.imagens import preparar_para_detector, reduzir
-from app.models import Especie, Foto, Identificacao, ModeloIA, StatusFoto
+from app.models import Foto, Identificacao, ModeloIA, StatusFoto
 from app.security import agora
 
 log = logging.getLogger("dbeeas.processamento")
@@ -26,19 +26,6 @@ LADO_MEDIA = 1600
 
 class FalhaTemporaria(RuntimeError):
     """Erro que pode passar sozinho (ex.: detector reiniciando). A fila tenta de novo."""
-
-
-def _obter_ou_criar(db: Session, modelo, filtro: dict, **extra):
-    obj = db.scalar(select(modelo).filter_by(**filtro))
-    if obj:
-        return obj
-    try:
-        with db.begin_nested():  # outro worker pode criar ao mesmo tempo
-            obj = modelo(**filtro, **extra)
-            db.add(obj)
-        return obj
-    except IntegrityError:
-        return db.scalar(select(modelo).filter_by(**filtro))
 
 
 def _registrar_modelo(db: Session, versao: str) -> ModeloIA:
@@ -52,8 +39,8 @@ def _registrar_modelo(db: Session, versao: str) -> ModeloIA:
     except detector.DetectorIndisponivel:
         pass
     for nome in especies:
-        _obter_ou_criar(db, Especie, {"nome_cientifico": nome})
-    return _obter_ou_criar(db, ModeloIA, {"versao": versao}, especies=especies)
+        obter_ou_criar_especie(db, nome)
+    return obter_ou_criar(db, ModeloIA, {"versao": versao}, especies=especies)
 
 
 def _gerar_miniaturas(foto: Foto, dados: bytes) -> None:
@@ -93,7 +80,7 @@ def processar_foto(foto_id: str) -> str:
             modelo = _registrar_modelo(db, resultado.get("versao_modelo") or "desconhecida")
             especie = None
             if resultado.get("especie"):
-                especie = _obter_ou_criar(db, Especie, {"nome_cientifico": resultado["especie"]})
+                especie = obter_ou_criar_especie(db, resultado["especie"])
             db.add(
                 Identificacao(
                     foto_id=foto.id,
@@ -104,6 +91,10 @@ def processar_foto(foto_id: str) -> str:
                     deteccoes=resultado.get("deteccoes") or [],
                 )
             )
+            db.flush()
+            db.refresh(foto, ["identificacoes"])
+            # Espécie final: a do modelo, a menos que uma pessoa já tenha revisado a foto
+            recalcular_especie_final(foto)
             foto.status = StatusFoto.concluida
             foto.erro = None
             foto.processada_em = agora()
