@@ -92,6 +92,54 @@ export interface Foto {
     versao_modelo: string | null
     criado_em: string
   } | null
+  /** Espécie final: a da revisão mais recente, se houver; senão, a do modelo */
+  especie: string | null
+  origem_especie: 'modelo' | 'revisao' | null
+  revisada: boolean
+  revisao: {
+    acao: AcaoRevisao
+    especie: string | null
+    observacao: string | null
+    revisor: string | null
+    perfil_revisor: string
+    criado_em: string
+  } | null
+}
+
+export type AcaoRevisao = 'confirmou' | 'corrigiu' | 'nao_identificavel' | 'restaurou'
+
+export const ACOES_REVISAO: Record<AcaoRevisao, string> = {
+  confirmou: 'Confirmada',
+  corrigiu: 'Corrigida',
+  nao_identificavel: 'Marcada como não identificável',
+  restaurou: 'Resultado do modelo restaurado',
+}
+
+export interface EspecieNoResumo {
+  id: number
+  nome: string
+  quantidade: number
+  porcentagem: number
+  revisadas: number
+  confianca_media: number | null
+}
+
+export interface ResumoColeta {
+  total: number
+  concluidas: number
+  pendentes: number
+  erro: number
+  identificadas: number
+  nao_identificadas: number
+  revisadas: number
+  especies: EspecieNoResumo[]
+}
+
+export interface Especie {
+  id: number
+  nome_cientifico: string
+  sensivel: boolean
+  reconhecida_pelo_modelo: boolean
 }
 
 export interface Pagina<T> {
