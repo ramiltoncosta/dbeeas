@@ -7,6 +7,7 @@ from typing import Annotated, Literal
 from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.models import Perfil
+from app.schemas_planos import ResumoPlanoUsuario
 
 SENHA_MIN = 8
 
@@ -87,6 +88,7 @@ class UsuarioOut(BaseModel):
 class UsuarioAdminOut(UsuarioOut):
     ultimo_login_em: datetime | None
     termos_aceitos_em: datetime
+    plano: ResumoPlanoUsuario | None = None  # plano e uso do mês
 
 
 class TokenOut(BaseModel):

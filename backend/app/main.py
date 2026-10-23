@@ -25,6 +25,7 @@ from app.routers import (
     identificar,
     mapa,
     painel,
+    planos,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -33,7 +34,7 @@ app = FastAPI(
     title="DBeeAS",
     description="Sistema inteligente de reconhecimento de abelhas pela asa. "
     "API usada pelo site e pelo aplicativo.",
-    version="0.7.0",
+    version="1.0.0",
 )
 
 app.state.limiter = limiter
@@ -63,6 +64,10 @@ for r in (
     fichas.admin,
     contato.publico,
     contato.admin,
+    planos.publico,
+    planos.eu,
+    planos.admin,
+    planos.pagamentos,
 ):
     app.include_router(r, prefix="/v1")
 

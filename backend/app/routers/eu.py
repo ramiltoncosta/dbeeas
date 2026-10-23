@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
 from app.deps import usuario_atual
-from app.models import Coleta, Exportacao, Foto, Perfil, Usuario
+from app.models import Assinatura, Coleta, Exportacao, Foto, Perfil, UsoMensal, Usuario
 from app.routers.coletas import apagar_arquivos
 from app.schemas import (
     AtualizarContaIn,
@@ -101,6 +101,30 @@ def exportar_dados(usuario: Usuario = Depends(usuario_atual), db: Session = Depe
                 ],
             }
             for c in coletas
+        ],
+        "assinaturas": [
+            {
+                "plano": a.plano.nome,
+                "status": a.status.value,
+                "inicio": a.inicio.isoformat(),
+                "fim": a.fim.isoformat() if a.fim else None,
+                "origem": a.origem,
+            }
+            for a in db.scalars(
+                select(Assinatura)
+                .where(Assinatura.usuario_id == usuario.id)
+                .order_by(Assinatura.criado_em)
+            )
+        ],
+        "uso_mensal": [
+            {
+                "mes": u.mes.isoformat(),
+                "fotos": u.fotos,
+                "identificacoes_rapidas": u.identificacoes_rapidas,
+            }
+            for u in db.scalars(
+                select(UsoMensal).where(UsoMensal.usuario_id == usuario.id).order_by(UsoMensal.mes)
+            )
         ],
         "exportado_em": agora().isoformat(),
     }

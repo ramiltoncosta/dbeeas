@@ -66,6 +66,11 @@ class Settings(BaseSettings):
     # Por quanto tempo os links das imagens valem
     url_assinada_minutos: int = 120
 
+    # Assinaturas: dias de teste gratuito para contas novas e serviço de pagamento.
+    # "manual" = o administrador ativa os planos pelo site (enquanto não há gateway).
+    dias_teste: int = 30
+    gateway_pagamento: str = "manual"
+
     # Limite de tentativas (login, cadastro, recuperação de senha)
     limite_auth: str = "10/minute"
     ratelimit_storage: str = "memory://"

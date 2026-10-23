@@ -3,6 +3,7 @@
 Etapa 1: usuários e tokens.
 Etapa 2: espécies, modelos, coletas, fotos e identificações.
 Etapa 3: revisões. Etapa 5: exportações. Etapa 6: fichas e mensagens de contato.
+Etapa 7: planos, assinaturas e uso mensal.
 """
 
 import enum
@@ -432,3 +433,82 @@ class MensagemContato(Base):
     criado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
     )
+
+
+# --- Etapa 7: planos, assinaturas e uso -------------------------------------------
+
+
+class Plano(Base):
+    """Plano de assinatura. Valores e limites são editados pelo administrador."""
+
+    __tablename__ = "planos"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    codigo: Mapped[str] = mapped_column(String(40), unique=True)  # ex.: "pesquisador"
+    nome: Mapped[str] = mapped_column(String(80))
+    descricao: Mapped[str | None] = mapped_column(Text)
+    # Preço por mês em centavos (evita erros de arredondamento). Vazio = "sob consulta".
+    preco_mensal_centavos: Mapped[int | None] = mapped_column(Integer)
+    # Fotos por mês (coletas + identificação rápida). Vazio = sem limite.
+    limite_fotos_mes: Mapped[int | None] = mapped_column(Integer)
+    permite_exportacao: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Aparece na página pública e pode ser pedido pelos usuários
+    publico: Mapped[bool] = mapped_column(Boolean, default=True)
+    ordem: Mapped[int] = mapped_column(Integer, default=0)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class StatusAssinatura(enum.StrEnum):
+    teste = "teste"  # período de teste gratuito
+    pendente = "pendente"  # pedida, aguardando pagamento ou ativação
+    ativa = "ativa"
+    suspensa = "suspensa"  # ex.: pagamento atrasado
+    cancelada = "cancelada"
+
+
+class Assinatura(Base):
+    """Histórico de assinaturas. A atual é a mais recente do usuário.
+
+    Nunca é apagada: cada mudança cria uma linha nova (dá para ver o histórico).
+    """
+
+    __tablename__ = "assinaturas"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    usuario_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="CASCADE"), index=True
+    )
+    plano_id: Mapped[int] = mapped_column(ForeignKey("planos.id", ondelete="RESTRICT"))
+    status: Mapped[StatusAssinatura] = mapped_column(_enum(StatusAssinatura, "status_assinatura"))
+    inicio: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Até quando vale. Vazio = sem prazo.
+    fim: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # "manual" (administrador) ou o nome do serviço de pagamento
+    origem: Mapped[str] = mapped_column(String(40), default="manual")
+    codigo_externo: Mapped[str | None] = mapped_column(String(120), index=True)
+    observacao: Mapped[str | None] = mapped_column(Text)
+    alterado_por_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="SET NULL")
+    )
+    criado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+
+    plano: Mapped[Plano] = relationship()
+    alterado_por: Mapped[Usuario | None] = relationship(foreign_keys=[alterado_por_id])
+
+
+class UsoMensal(Base):
+    """Quantas fotos cada usuário enviou no mês (para o limite do plano).
+
+    É um contador: apagar fotos não devolve o saldo do mês.
+    """
+
+    __tablename__ = "uso_mensal"
+
+    usuario_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True
+    )
+    mes: Mapped[date] = mapped_column(Date, primary_key=True)  # sempre o dia 1
+    fotos: Mapped[int] = mapped_column(Integer, default=0)
+    identificacoes_rapidas: Mapped[int] = mapped_column(Integer, default=0)

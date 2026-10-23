@@ -11,6 +11,7 @@ from app.db import get_db
 from app.deps import usuario_atual
 from app.emails import email_redefinir_senha
 from app.models import Perfil, TipoToken, Token, Usuario
+from app.planos import criar_teste
 from app.ratelimit import limiter
 from app.schemas import (
     CadastroIn,
@@ -65,6 +66,7 @@ def cadastro(
     )
     db.add(usuario)
     db.flush()
+    criar_teste(db, usuario)  # período de teste gratuito no plano do perfil
     return iniciar_sessao(db, usuario, request, response)
 
 
