@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
@@ -35,11 +36,17 @@ const Contexto = createContext<ContextoAuth | null>(null)
 export function ProvedorAuth({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null)
   const [carregando, setCarregando] = useState(true)
+  const consultas = useQueryClient()
 
-  const aplicarSessao = useCallback((sessao: Sessao) => {
-    definirToken(sessao.access_token)
-    setUsuario(sessao.usuario)
-  }, [])
+  const aplicarSessao = useCallback(
+    (sessao: Sessao) => {
+      // Outra pessoa entrando no mesmo navegador não pode ver dados guardados da anterior
+      consultas.clear()
+      definirToken(sessao.access_token)
+      setUsuario(sessao.usuario)
+    },
+    [consultas],
+  )
 
   // Ao abrir o site, tenta recuperar a sessão pelo cookie
   useEffect(() => {
@@ -69,10 +76,11 @@ export function ProvedorAuth({ children }: { children: ReactNode }) {
         } finally {
           definirToken(null)
           setUsuario(null)
+          consultas.clear()
         }
       },
     }),
-    [usuario, carregando, aplicarSessao],
+    [usuario, carregando, aplicarSessao, consultas],
   )
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>

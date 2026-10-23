@@ -10,6 +10,7 @@ import { Alerta, AreaTexto, Botao, Campo, Selecao } from '../components/ui'
 import { api, mensagemErro } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import type { EspecieResumo } from '../lib/especies'
+import { limiteTexto, preco, type Plano } from '../lib/planos'
 
 const largura = 'mx-auto w-full max-w-6xl px-4'
 
@@ -176,39 +177,68 @@ function Especies() {
   )
 }
 
-const PLANOS = [
-  { nome: 'Estudante', para: 'Para aprender e fazer trabalhos da graduação e da pós.', itens: ['Identificação rápida', 'Coletas com limite mensal de fotos', 'Fichas das espécies'] },
-  { nome: 'Pesquisador', para: 'Para quem processa coletas de campo com frequência.', itens: ['Mais fotos por mês', 'Exportação ZIP e Darwin Core', 'Mapa com localização exata de espécies sensíveis'] },
-  { nome: 'Institucional', para: 'Para órgãos públicos, universidades e laboratórios.', itens: ['Vários usuários', 'Volume combinado com a equipe', 'Suporte para monitoramento'] },
-]
+// Destaques de cada plano além do limite de fotos (os valores e limites vêm do sistema)
+const DESTAQUES: Record<string, string[]> = {
+  estudante: ['Identificação rápida e coletas', 'Fichas das espécies'],
+  pesquisador: ['Coletas grandes processadas na fila', 'Mapa de ocorrências'],
+  institucional: ['Volume para monitoramento', 'Atendimento da equipe'],
+}
 
 function Planos({ aoEscolher }: { aoEscolher: () => void }) {
+  const { usuario } = useAuth()
+  const planos = useQuery({ queryKey: ['planos'], queryFn: () => api<Plano[]>('/v1/planos') })
+  if (!planos.data?.length) return null
   return (
     <section id="planos" aria-labelledby="titulo-planos" className={`${largura} scroll-mt-4 py-16 sm:py-20`}>
       <Titulo id="titulo-planos">Planos</Titulo>
       <p className="mt-3 max-w-2xl text-tinta-700">
-        O DBeeAS funciona por assinatura. Os valores serão divulgados na abertura das assinaturas; até lá, fale com a
-        gente para participar da fase de testes.
+        Ao criar a conta, você ganha um período de teste gratuito no plano do seu perfil. Depois, escolha o plano que
+        combina com o volume de fotos da sua pesquisa.
       </p>
       <div className="mt-10 grid gap-6 md:grid-cols-3">
-        {PLANOS.map((p) => (
-          <div key={p.nome} className="flex flex-col rounded-2xl border border-tinta-100 bg-white p-6">
-            <h3 className="font-display text-2xl font-bold text-tinta-900">{p.nome}</h3>
-            <p className="mt-2 text-sm text-tinta-700">{p.para}</p>
-            <ul className="mt-4 flex-1 space-y-2 text-sm text-tinta-800">
-              {p.itens.map((i) => (
-                <li key={i} className="flex gap-2">
-                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-mel-500" aria-hidden />
-                  {i}
-                </li>
-              ))}
-            </ul>
-            <button onClick={aoEscolher} className="mt-6 rounded-lg border border-tinta-700 px-4 py-2.5 text-sm font-semibold text-tinta-800 hover:bg-tinta-50">
-              Quero saber mais
-            </button>
-          </div>
-        ))}
+        {planos.data.map((p) => {
+          const valor = preco(p.preco_mensal_centavos)
+          const itens = [
+            limiteTexto(p.limite_fotos_mes),
+            ...(p.permite_exportacao ? ['Exportação ZIP e planilha Darwin Core'] : []),
+            ...(DESTAQUES[p.codigo] ?? []),
+          ]
+          return (
+            <div key={p.id} className="flex flex-col rounded-2xl border border-tinta-100 bg-white p-6">
+              <h3 className="font-display text-2xl font-bold text-tinta-900">{p.nome}</h3>
+              {p.descricao && <p className="mt-2 text-sm text-tinta-700">{p.descricao}</p>}
+              <p className="mt-4 text-tinta-900">
+                {valor ? (
+                  <>
+                    <span className="font-display text-3xl font-bold">{valor}</span>{' '}
+                    <span className="text-sm text-tinta-500">por mês</span>
+                  </>
+                ) : (
+                  <span className="font-semibold text-tinta-700">Valor sob consulta</span>
+                )}
+              </p>
+              <ul className="mt-4 flex-1 space-y-2 text-sm text-tinta-800">
+                {itens.map((i) => (
+                  <li key={i} className="flex gap-2">
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-mel-500" aria-hidden />
+                    {i}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                to={usuario ? '/plano' : '/cadastrar'}
+                className="mt-6 rounded-lg bg-tinta-700 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-tinta-800"
+              >
+                {usuario ? 'Escolher este plano' : 'Começar o teste grátis'}
+              </Link>
+            </div>
+          )
+        })}
       </div>
+      <p className="mt-6 text-sm text-tinta-700">
+        Precisa de outro volume ou de um plano para a sua instituição?{' '}
+        <button onClick={aoEscolher} className="font-semibold text-tinta-800 underline">Fale com a gente</button>.
+      </p>
     </section>
   )
 }

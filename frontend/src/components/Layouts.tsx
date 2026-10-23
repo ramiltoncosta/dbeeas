@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { NOMES_PERFIL } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { NOMES_STATUS, useMeuPlano } from '../lib/planos'
 import { Carregando, Logo } from './ui'
 
 export function Rodape() {
@@ -111,9 +112,18 @@ export function LayoutApp() {
   const { usuario, carregando, sair } = useAuth()
   const local = useLocation()
   const [menuAberto, setMenuAberto] = useState(false)
+  const plano = useMeuPlano(!!usuario)
 
   if (carregando) return <Carregando />
   if (!usuario) return <Navigate to="/entrar" replace state={{ de: local.pathname }} />
+
+  // Ex.: "Pesquisador · teste gratuito" embaixo do nome
+  const resumoPlano =
+    plano.data && plano.data.status !== 'ilimitado'
+      ? plano.data.plano
+        ? `Plano ${plano.data.plano.nome}${plano.data.status !== 'ativa' ? `: ${NOMES_STATUS[plano.data.status].toLowerCase()}` : ''}`
+        : NOMES_STATUS[plano.data.status]
+      : null
 
   const links = [
     { para: '/painel', texto: 'Painel' },
@@ -145,10 +155,10 @@ export function LayoutApp() {
             ))}
           </nav>
           <div className="hidden items-center gap-3 lg:flex">
-            <div className="text-right leading-tight">
+            <Link to="/plano" className="rounded-lg px-2 py-1 text-right leading-tight hover:bg-tinta-50" title="Meu plano">
               <p className="text-sm font-semibold text-tinta-800">{usuario.nome}</p>
-              <p className="text-xs text-tinta-500">{NOMES_PERFIL[usuario.perfil]}</p>
-            </div>
+              <p className="text-xs text-tinta-500">{resumoPlano ?? NOMES_PERFIL[usuario.perfil]}</p>
+            </Link>
             <button onClick={sair} className="rounded-lg px-3 py-2 text-sm text-tinta-500 hover:bg-tinta-50 hover:text-tinta-800">
               Sair
             </button>
@@ -167,8 +177,11 @@ export function LayoutApp() {
         {menuAberto && (
           <nav className="space-y-1 border-t border-tinta-100 px-4 py-3 lg:hidden" onClick={() => setMenuAberto(false)}>
             <p className="px-3 pb-2 text-sm text-tinta-500">
-              {usuario.nome} · {NOMES_PERFIL[usuario.perfil]}
+              {usuario.nome}, {resumoPlano ?? NOMES_PERFIL[usuario.perfil]}
             </p>
+            <NavLink to="/plano" className={estiloLink}>
+              Meu plano
+            </NavLink>
             {links.map((l) => (
               <NavLink key={l.para} to={l.para} className={estiloLink}>
                 {l.texto}
@@ -194,6 +207,7 @@ export function SomenteAdmin() {
   if (usuario?.perfil !== 'admin') return <Navigate to="/painel" replace />
   const abas = [
     { para: '/admin/usuarios', texto: 'Usuários' },
+    { para: '/admin/planos', texto: 'Planos' },
     { para: '/admin/especies', texto: 'Espécies e fichas' },
     { para: '/admin/mensagens', texto: 'Mensagens' },
   ]

@@ -13,3 +13,6 @@ __pycache__/
 .ruff_cache/
 node_modules/
 dump.rdb
+
+# Backups do servidor (scripts/backup.sh)
+backups/

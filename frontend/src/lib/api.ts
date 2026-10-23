@@ -33,6 +33,14 @@ export interface Usuario {
 export interface UsuarioAdmin extends Usuario {
   ultimo_login_em: string | null
   termos_aceitos_em: string
+  plano: {
+    status: string
+    plano: string | null
+    fim: string | null
+    usadas: number
+    limite: number | null
+    pedido: string | null
+  } | null
 }
 
 export interface Sessao {

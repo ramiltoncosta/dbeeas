@@ -62,6 +62,13 @@ def limpar_tabelas(banco):
                 "RESTART IDENTITY CASCADE"
             )
         )
+        # Os três planos iniciais (criados pela migração) ficam; os criados nos testes saem
+        c.execute(
+            text(
+                "DELETE FROM planos "
+                "WHERE codigo NOT IN ('estudante', 'pesquisador', 'institucional')"
+            )
+        )
 
 
 @pytest.fixture

@@ -3,7 +3,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import type { DragEvent } from 'react'
 import { mensagemErro } from '../../lib/api'
+import SaldoPlano from '../../components/SaldoPlano'
 import { enviarFoto } from '../../lib/coletas'
+import { useMeuPlano } from '../../lib/planos'
 
 type Situacao = 'aguardando' | 'enviando' | 'enviada' | 'recusada'
 
@@ -26,6 +28,9 @@ export default function Envio({ coletaId }: { coletaId: string }) {
   const [itens, setItens] = useState<Item[]>([])
   const [arrastando, setArrastando] = useState(false)
   const [ativo, setAtivo] = useState(false)
+  // Sem plano válido ou sem saldo: a área de envio fica desligada (o aviso explica o motivo)
+  const plano = useMeuPlano()
+  const bloqueado = !!plano.data && !plano.data.pode_enviar
 
   const atualizar = (id: number, dados: Partial<Item>) =>
     setItens((lista) => lista.map((i) => (i.id === id ? { ...i, ...dados } : i)))
@@ -49,12 +54,13 @@ export default function Envio({ coletaId }: { coletaId: string }) {
     }
     await Promise.all(Array.from({ length: SIMULTANEOS }, trabalhador))
     setAtivo(false)
+    cliente.invalidateQueries({ queryKey: ['meu-plano'] })
     cliente.invalidateQueries({ queryKey: ['fotos', coletaId] })
     cliente.invalidateQueries({ queryKey: ['coletas'] })
   }
 
   function adicionar(arquivos: FileList | null) {
-    if (!arquivos?.length) return
+    if (!arquivos?.length || bloqueado) return
     const novos: Item[] = Array.from(arquivos).map((arquivo) => ({
       id: proximoId++,
       arquivo,
@@ -88,12 +94,17 @@ export default function Envio({ coletaId }: { coletaId: string }) {
         }}
         onDragLeave={() => setArrastando(false)}
         onDrop={soltar}
-        onClick={() => entrada.current?.click()}
-        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && entrada.current?.click()}
+        onClick={() => !bloqueado && entrada.current?.click()}
+        onKeyDown={(e) => !bloqueado && (e.key === 'Enter' || e.key === ' ') && entrada.current?.click()}
         role="button"
-        tabIndex={0}
-        className={`cursor-pointer rounded-2xl border-2 border-dashed px-6 py-10 text-center transition ${
-          arrastando ? 'border-mel-500 bg-mel-50' : 'border-tinta-100 bg-white hover:border-mel-400'
+        tabIndex={bloqueado ? -1 : 0}
+        aria-disabled={bloqueado}
+        className={`rounded-2xl border-2 border-dashed px-6 py-10 text-center transition ${
+          bloqueado
+            ? 'cursor-not-allowed border-tinta-100 bg-tinta-50 opacity-60'
+            : arrastando
+              ? 'cursor-pointer border-mel-500 bg-mel-50'
+              : 'cursor-pointer border-tinta-100 bg-white hover:border-mel-400'
         }`}
       >
         <svg viewBox="0 0 24 24" className="mx-auto h-10 w-10 text-mel-500" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
@@ -113,6 +124,8 @@ export default function Envio({ coletaId }: { coletaId: string }) {
           }}
         />
       </div>
+
+      <SaldoPlano />
 
       {itens.length > 0 && (
         <div className="rounded-2xl border border-tinta-100 bg-white p-4">

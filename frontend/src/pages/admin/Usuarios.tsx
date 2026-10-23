@@ -3,6 +3,8 @@ import { useState } from 'react'
 import { Alerta, Botao, Campo, Carregando, Selecao } from '../../components/ui'
 import { api, ErroApi, NOMES_PERFIL, type Perfil, type UsuarioAdmin } from '../../lib/api'
 import { useAuth } from '../../lib/auth'
+import { COR_STATUS, dataCurta, NOMES_STATUS } from '../../lib/planos'
+import AssinaturaUsuario from './AssinaturaUsuario'
 
 interface Pagina {
   itens: UsuarioAdmin[]
@@ -19,12 +21,15 @@ export default function AdminUsuarios() {
   const [busca, setBusca] = useState('')
   const [perfil, setPerfil] = useState('')
   const [aguardando, setAguardando] = useState(false)
+  const [pedidos, setPedidos] = useState(false)
+  const [aberto, setAberto] = useState<UsuarioAdmin | null>(null)
   const [pagina, setPagina] = useState(1)
 
   const params = new URLSearchParams({ pagina: String(pagina), por_pagina: '20' })
   if (busca.trim()) params.set('busca', busca.trim())
   if (perfil) params.set('perfil', perfil)
   if (aguardando) params.set('aguardando_aprovacao', 'true')
+  if (pedidos) params.set('pedidos_de_plano', 'true')
 
   const consulta = useQuery({
     queryKey: ['admin-usuarios', params.toString()],
@@ -48,7 +53,7 @@ export default function AdminUsuarios() {
         <p className="mt-1 text-sm text-tinta-500">{total} usuário(s) encontrado(s)</p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-[1fr_200px_auto] sm:items-end">
+      <div className="grid gap-3 sm:grid-cols-[1fr_200px_auto_auto] sm:items-end">
         <Campo rotulo="Buscar" placeholder="Nome, e-mail ou instituição" value={busca} onChange={(e) => { setBusca(e.target.value); setPagina(1) }} />
         <Selecao rotulo="Perfil" value={perfil} onChange={(e) => { setPerfil(e.target.value); setPagina(1) }}>
           <option value="">Todos</option>
@@ -60,6 +65,10 @@ export default function AdminUsuarios() {
           <input type="checkbox" className="accent-mel-600" checked={aguardando} onChange={(e) => { setAguardando(e.target.checked); setPagina(1) }} />
           Aguardando aprovação
         </label>
+        <label className="flex items-center gap-2 pb-3 text-sm text-tinta-800">
+          <input type="checkbox" className="accent-mel-600" checked={pedidos} onChange={(e) => { setPedidos(e.target.checked); setPagina(1) }} />
+          Pedidos de plano
+        </label>
       </div>
 
       {alterar.error && <Alerta>{alterar.error instanceof ErroApi ? alterar.error.message : 'Erro ao salvar.'}</Alerta>}
@@ -68,11 +77,12 @@ export default function AdminUsuarios() {
 
       {consulta.data && (
         <div className="overflow-x-auto rounded-2xl border border-tinta-100 bg-white shadow-sm">
-          <table className="w-full min-w-[760px] text-left text-sm">
+          <table className="w-full min-w-[920px] text-left text-sm">
             <thead className="bg-tinta-50 text-xs uppercase tracking-wide text-tinta-500">
               <tr>
                 <th className="px-4 py-3">Usuário</th>
                 <th className="px-4 py-3">Perfil</th>
+                <th className="px-4 py-3">Plano</th>
                 <th className="px-4 py-3">Cadastro</th>
                 <th className="px-4 py-3">Último acesso</th>
                 <th className="px-4 py-3">Situação</th>
@@ -109,6 +119,29 @@ export default function AdminUsuarios() {
                         </button>
                       )}
                     </td>
+                    <td className="px-4 py-3">
+                      {u.plano && (
+                        <>
+                          <p className="flex flex-wrap items-center gap-1.5">
+                            <span className="font-semibold text-tinta-800">{u.plano.plano ?? '—'}</span>
+                            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${COR_STATUS[u.plano.status]}`}>
+                              {NOMES_STATUS[u.plano.status]}
+                            </span>
+                          </p>
+                          <p className="text-xs text-tinta-500">
+                            {u.plano.usadas}
+                            {u.plano.limite != null && `/${u.plano.limite}`} fotos no mês
+                            {u.plano.fim && `, até ${dataCurta(u.plano.fim)}`}
+                          </p>
+                          {u.plano.pedido && <p className="text-xs font-semibold text-mel-700">Pediu: {u.plano.pedido}</p>}
+                        </>
+                      )}
+                      {u.perfil !== 'admin' && (
+                        <button className="mt-1 text-xs font-semibold text-tinta-700 underline" onClick={() => setAberto(u)}>
+                          Gerenciar plano
+                        </button>
+                      )}
+                    </td>
                     <td className="px-4 py-3">{data(u.criado_em)}</td>
                     <td className="px-4 py-3">{data(u.ultimo_login_em)}</td>
                     <td className="px-4 py-3">
@@ -126,13 +159,15 @@ export default function AdminUsuarios() {
               })}
               {consulta.data.itens.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-tinta-500">Nenhum usuário encontrado.</td>
+                  <td colSpan={6} className="px-4 py-8 text-center text-tinta-500">Nenhum usuário encontrado.</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
       )}
+
+      {aberto && <AssinaturaUsuario usuario={aberto} aoFechar={() => setAberto(null)} />}
 
       {paginas > 1 && (
         <div className="flex items-center justify-center gap-3">

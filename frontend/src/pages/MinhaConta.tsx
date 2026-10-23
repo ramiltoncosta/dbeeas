@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { FormEvent } from 'react'
 import { Alerta, Botao, Caixa, Campo, Cartao } from '../components/ui'
 import { api, baixarArquivo, ErroApi, NOMES_PERFIL, type Sessao, type Usuario } from '../lib/api'
@@ -155,7 +156,10 @@ export default function MinhaConta() {
   if (!usuario) return null
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-tinta-900">Minha conta</h1>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h1 className="text-2xl font-bold text-tinta-900">Minha conta</h1>
+        <Link to="/plano" className="text-sm font-semibold text-tinta-700 underline">Ver meu plano e o uso do mês</Link>
+      </div>
       <div className="grid gap-6 lg:grid-cols-2">
         <DadosPessoais usuario={usuario} />
         <TrocarSenha />

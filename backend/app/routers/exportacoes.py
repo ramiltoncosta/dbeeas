@@ -26,6 +26,7 @@ from app.models import (
     TipoImagemExportacao,
     Usuario,
 )
+from app.planos import situacao
 from app.routers.coletas import apagar_arquivos, obter_coleta
 from app.security import agora
 
@@ -92,6 +93,10 @@ def exportar(
 ):
     """Pede o ZIP da coleta. O arquivo é gerado em segundo plano."""
     coleta = obter_coleta(db, coleta_id, usuario)
+    if not situacao(db, usuario).permite_exportacao:
+        raise HTTPException(
+            403, "Seu plano não inclui a exportação. Veja os planos em “Meu plano”."
+        )
     apagar_expiradas(db)
 
     total = db.scalar(select(func.count()).select_from(Foto).where(Foto.coleta_id == coleta.id))

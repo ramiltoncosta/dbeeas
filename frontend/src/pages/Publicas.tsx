@@ -59,6 +59,12 @@ export function Privacidade() {
         para apoiar a pesquisa e o monitoramento ambiental. Outras pessoas não veem suas fotos, o nome da coleta
         nem quem coletou. Você pode tirar qualquer coleta do mapa geral ao editá-la.
       </p>
+      <h2>Assinatura</h2>
+      <p>
+        Guardamos o histórico do seu plano e quantas fotos você enviou em cada mês, para aplicar os limites do
+        plano. Quando houver pagamento on-line, os dados do cartão ou do pagamento ficarão com o serviço de
+        pagamento, não com o DBeeAS.
+      </p>
       <h2>Localização de espécies sensíveis</h2>
       <p>
         Para proteger espécies ameaçadas, a localização exata dessas espécies só é mostrada ao dono da foto,

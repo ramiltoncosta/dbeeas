@@ -28,6 +28,7 @@ from app.models import (
     StatusFoto,
     Usuario,
 )
+from app.planos import Cota
 from app.schemas_coletas import (
     ColetaAtualizar,
     ColetaIn,
@@ -258,6 +259,13 @@ def enviar_fotos(
     if len(arquivos) > s.max_fotos_por_envio:
         raise HTTPException(413, f"Envie no máximo {s.max_fotos_por_envio} fotos por vez.")
 
+    # Limite do plano: conta para o dono da coleta (trava o saldo até o fim do envio)
+    dono = usuario if coleta.usuario_id == usuario.id else db.get(Usuario, coleta.usuario_id)
+    cota = Cota(db, dono)
+    if not cota.situacao.pode_enviar:
+        db.rollback()
+        raise HTTPException(403, cota.situacao.motivo_bloqueio)
+
     limite = s.upload_max_mb * 1024 * 1024
     arm = get_armazenamento()
     existentes = set(db.scalars(select(Foto.sha256).where(Foto.coleta_id == coleta.id)))
@@ -280,6 +288,10 @@ def enviar_fotos(
         sha = hashlib.sha256(dados).hexdigest()
         if sha in existentes:
             rejeitadas.append(Rejeitada(arquivo=nome, motivo="Esta foto já está na coleta."))
+            continue
+        if not (cota.ja_contada(sha) or cota.pegar()):
+            motivo = "Limite de fotos do plano atingido neste mês."
+            rejeitadas.append(Rejeitada(arquivo=nome, motivo=motivo))
             continue
         existentes.add(sha)
 
