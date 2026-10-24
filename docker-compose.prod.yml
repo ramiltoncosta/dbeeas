@@ -8,7 +8,8 @@
 
 services:
   traefik:
-    image: traefik:v3.3
+    # v3.6 conversa com o Docker 29+ (versões antigas mostram "404 page not found" em tudo)
+    image: traefik:v3.6
     command:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
